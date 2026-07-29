@@ -27,7 +27,11 @@ export function useAnalyze() {
     aiProvider: ""
   });
 
-  const analyze = useCallback(async (text: string, images: ImagePayload[]) => {
+  const analyze = useCallback(
+    async (
+      text: string,
+      images: ImagePayload[]
+    ): Promise<{ dna: FabricDNA; followUpQuestions: FollowUpQuestion[] } | false> => {
     if (!text.trim() && images.length === 0) {
       setState((prev) => ({
         ...prev,
@@ -68,16 +72,21 @@ export function useAnalyze() {
         return false;
       }
 
+      const resultDna = data.dna ?? null;
+      const resultQuestions = data.followUpQuestions ?? [];
+
       setState({
         loading: false,
         error: "",
-        dna: data.dna ?? null,
-        followUpQuestions: data.followUpQuestions ?? [],
+        dna: resultDna,
+        followUpQuestions: resultQuestions,
         evidence: data.evidence ?? null,
         aiProvider: data.aiProvider ?? ""
       });
 
-      return true;
+      if (!resultDna) return false;
+
+      return { dna: resultDna, followUpQuestions: resultQuestions };
     } catch {
       setState((prev) => ({
         ...prev,
