@@ -268,7 +268,7 @@ export function buildStructuredFollowUpQuestions(dna: FabricDNA): FollowUpQuesti
   }
 
   questionCandidates.sort((a, b) => a.priority - b.priority);
-  return questionCandidates.slice(0, 4);
+  return questionCandidates;
 }
 
 // ===== ensureUsableResult —— 兜底保证结果可用 =====
@@ -306,8 +306,8 @@ export function ensureUsableResult(
         : fallback.followUpQuestions
   };
 
-  // Always regenerate structured followUpQuestions from the final dna
-  safe.followUpQuestions = buildStructuredFollowUpQuestions(safe.dna);
+  // Always regenerate structured followUpQuestions from the final dna (initial only, limit 4)
+  safe.followUpQuestions = buildStructuredFollowUpQuestions(safe.dna).slice(0, 4);
 
   return safe;
 }

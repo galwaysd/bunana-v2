@@ -12,5 +12,6 @@ yarn-error.log*
 
 # Test artifacts
 .test_*.json
+.test_*.js
 .t*.json
 .t*_resp.json

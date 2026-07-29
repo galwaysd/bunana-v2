@@ -51,8 +51,8 @@ export function runDemoInitial(text: string, images: ImagePayload[], language: s
 
   applySafetyRules(result, text, images);
 
-  // Regenerate structured followUpQuestions from final dna
-  result.followUpQuestions = buildStructuredFollowUpQuestions(result.dna);
+  // Regenerate structured followUpQuestions from final dna (initial mode: max 4)
+  result.followUpQuestions = buildStructuredFollowUpQuestions(result.dna).slice(0, 4);
 
   return result;
 }
