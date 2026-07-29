@@ -78,22 +78,27 @@ export async function upsertImageAsset(input: {
 /** dataUrl → 持久化图片（含去重） */
 export async function persistImageFromDataUrl(
   dataUrl: string,
-  imageHash: string,
+  imageHash: string | undefined,
   originalName: string,
 ): Promise<ImageAsset> {
-  const normalizedHash = imageHash.trim().toLowerCase();
+  // 1. 解析 dataUrl（优先于 hash 计算，确保 buffer 可用）
+  const { mimeType, buffer, extension } = parseDataUrl(dataUrl);
 
-  // 1. 去重检查
+  // 2. SHA-256 从 buffer 计算（比客户端传入更可靠，且自动兜底）
+  const { createHash } = await import("node:crypto");
+  const normalizedHash = imageHash?.trim().toLowerCase()
+    ?? createHash("sha256").update(buffer).digest("hex");
+
+  // 3. 去重检查
   const existing = await findImageAssetByHash(normalizedHash);
   if (existing) {
     return { ...existing, reused: true };
   }
 
-  // 2. 解析 + 上传
-  const { mimeType, buffer, extension } = parseDataUrl(dataUrl);
+  // 4. 上传 Storage
   const { storagePath, publicUrl } = await uploadImageToStorage(extension, buffer);
 
-  // 3. Upsert 元数据
+  // 5. Upsert 元数据
   const asset = await upsertImageAsset({
     sha256: normalizedHash,
     storagePath,
