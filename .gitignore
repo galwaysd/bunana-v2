@@ -10,6 +10,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Supabase CLI temp
+supabase/.temp/
+
 # Test artifacts
 .test_*.json
 .test_*.js
