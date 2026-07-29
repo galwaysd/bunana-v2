@@ -14,6 +14,12 @@ import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
 
 type FlowPhase = "idle" | "analyzing" | "followUp" | "done";
 
+function channelState(phase: FlowPhase): string {
+  if (phase === "done") return "channel-line complete";
+  if (phase === "analyzing" || phase === "followUp") return "channel-line active";
+  return "channel-line";
+}
+
 export default function Home() {
   const [images, setImages] = useState<ImagePayload[]>([]);
   const [text, setText] = useState("");
@@ -89,149 +95,124 @@ export default function Home() {
   const isSubmitDisabled = phase === "analyzing" || phase === "followUp";
 
   return (
-    <main style={{ maxWidth: 680, margin: "0 auto", padding: "1.5rem 1rem" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "1.25rem" }}>
-        <h1 style={{ fontSize: "1.35rem", color: "#333", margin: "0 0 0.25rem" }}>
-          Bunana V2
-        </h1>
-        <p style={{ fontSize: "0.85rem", color: "#999", margin: 0 }}>
-          一句话，找到你的布
-        </p>
-      </div>
+    <div className="workbench-page">
+      <div className="workbench-body">
 
-      {/* Upload area */}
-      <ImageUploader
-        images={images}
-        onImagesChange={setImages}
-        disabled={isSubmitDisabled}
-      />
+        {/* ======== Left: Input Panel ======== */}
+        <aside className="input-panel">
+          <div className="panel-label">布样工作台</div>
 
-      {/* Text input */}
-      <TextInput text={text} onTextChange={setText} disabled={isSubmitDisabled} />
-
-      {/* Analyze button */}
-      {phase !== "followUp" && phase !== "done" && (
-        <div style={{ marginTop: "0.75rem" }}>
-          <button
-            onClick={handleInitialAnalyze}
-            disabled={!canAnalyze}
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: canAnalyze ? "pointer" : "not-allowed",
-              background: canAnalyze ? "#4a6741" : "#e0e0e0",
-              color: canAnalyze ? "#fff" : "#999",
-              transition: "background 0.2s"
-            }}
-          >
-            开始织卡
-          </button>
-        </div>
-      )}
-
-      {/* Loading (initial analyze) */}
-      {initialLoading && <WeavingLoader />}
-
-      {/* Error */}
-      {(initialError || (phase === "idle" && !initialLoading ? "" : "")) && (
-        initialError ? (
-          <div
-            style={{
-              marginTop: "1rem",
-              padding: "0.75rem 1rem",
-              borderRadius: "8px",
-              background: "#fff0f0",
-              border: "1px solid #ffcdd2",
-              color: "#c62828",
-              fontSize: "0.9rem"
-            }}
-          >
-            {initialError}
-          </div>
-        ) : null
-      )}
-
-      {/* Fabric DNA Card */}
-      {dna && (
-        <FabricDNACard
-          ref={cardRef}
-          dna={dna}
-          aiProvider={aiProvider}
-          followUpQuestions={followUpQuestions}
-        />
-      )}
-
-      {/* Follow-up question flow */}
-      {phase === "followUp" && dna && followUpQuestions.length > 0 && (
-        <FollowUpQuestions
-          question={followUpQuestions[0]}
-          questionIndex={Object.keys(answeredLog).length}
-          totalCount={
-            followUpQuestions.length + Object.keys(answeredLog).length
-          }
-          submitting={refineSubmitting}
-          error={refineError}
-          onSubmit={handleRefineAnswer}
-        />
-      )}
-
-      {/* Done */}
-      {phase === "done" && dna && (
-        <>
-          <div
-            style={{
-              marginTop: "1.25rem",
-              padding: "1rem 1.25rem",
-              borderRadius: "12px",
-              background: "#e8f5e9",
-              border: "1px solid #a5d6a7",
-              color: "#2e7d32",
-              fontSize: "0.9rem",
-              textAlign: "center"
-            }}
-          >
-            所有问题已回答完毕。Fabric DNA 已构建完成。
-          </div>
-          <SavePngButton targetRef={cardRef} />
-          <PublishButton
-            dna={dna}
-            text={text}
+          <ImageUploader
             images={images}
-            aiProvider={aiProvider}
+            onImagesChange={setImages}
+            disabled={isSubmitDisabled}
           />
-        </>
-      )}
 
-      {/* Debug: answeredLog */}
-      {phase === "done" && Object.keys(answeredLog).length > 0 && (
-        <details
-          style={{
-            marginTop: "0.75rem",
-            fontSize: "0.8rem",
-            color: "#999",
-            cursor: "pointer"
-          }}
-        >
-          <summary style={{ marginBottom: "0.25rem" }}>answeredLog</summary>
-          <pre
-            style={{
-              margin: 0,
-              padding: "0.5rem",
-              background: "#f5f5f5",
-              borderRadius: "6px",
-              overflow: "auto",
-              maxHeight: 200
-            }}
-          >
-            {JSON.stringify(answeredLog, null, 2)}
-          </pre>
-        </details>
-      )}
-    </main>
+          <TextInput
+            text={text}
+            onTextChange={setText}
+            disabled={isSubmitDisabled}
+          />
+
+          {/* Analyze button —— idle 状态：图片或文字有其一即可用 */}
+          {phase !== "followUp" && phase !== "done" && (
+            <button
+              onClick={handleInitialAnalyze}
+              disabled={!canAnalyze}
+              className="btn-weave"
+            >
+              {phase === "analyzing" ? "织卡中…" : "开始织卡"}
+            </button>
+          )}
+        </aside>
+
+        {/* ======== Center: Weaving Channel ======== */}
+        <div className="weaving-channel">
+          <div className={channelState(phase)} />
+        </div>
+
+        {/* ======== Right: Output Panel ======== */}
+        <section className="output-panel">
+
+          {/* Loading (initial analyze) */}
+          {initialLoading && <WeavingLoader />}
+
+          {/* Error */}
+          {initialError && (
+            <div className="error-banner">{initialError}</div>
+          )}
+
+          {/* Fabric DNA Card */}
+          {dna ? (
+            <FabricDNACard
+              ref={cardRef}
+              dna={dna}
+              aiProvider={aiProvider}
+              followUpQuestions={followUpQuestions}
+            />
+          ) : (
+            /* DNA 空占位（idle / analyzing 时显示） */
+            <div className="dna-placeholder">
+              <span className="dna-placeholder-label">
+                {phase === "analyzing" ? "AI 正在读取布样数据…" : "FABRIC DNA"}
+              </span>
+              <div className="dna-placeholder-frame">
+                <div className="dna-placeholder-rows">
+                  {[
+                    "面料名称", "用途", "成分", "织法",
+                    "克重", "幅宽", "涂层", "防水性",
+                    "起订量", "交期", "颜色", "特性"
+                  ].map((label) => (
+                    <div className="dna-placeholder-row" key={label}>
+                      <div className="ph-label" />
+                      <div className="ph-value" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Follow-up question flow */}
+          {phase === "followUp" && dna && followUpQuestions.length > 0 && (
+            <FollowUpQuestions
+              question={followUpQuestions[0]}
+              questionIndex={Object.keys(answeredLog).length}
+              totalCount={
+                followUpQuestions.length + Object.keys(answeredLog).length
+              }
+              submitting={refineSubmitting}
+              error={refineError}
+              onSubmit={handleRefineAnswer}
+            />
+          )}
+
+          {/* Done */}
+          {phase === "done" && dna && (
+            <>
+              <div className="done-status">
+                已识别 2 · 已确认 10
+              </div>
+              <SavePngButton targetRef={cardRef} />
+              <PublishButton
+                dna={dna}
+                text={text}
+                images={images}
+                aiProvider={aiProvider}
+              />
+            </>
+          )}
+
+          {/* Debug: answeredLog */}
+          {phase === "done" && Object.keys(answeredLog).length > 0 && (
+            <details className="debug-log">
+              <summary>answeredLog</summary>
+              <pre>{JSON.stringify(answeredLog, null, 2)}</pre>
+            </details>
+          )}
+
+        </section>
+      </div>
+    </div>
   );
 }
