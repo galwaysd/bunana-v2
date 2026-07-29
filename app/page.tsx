@@ -7,6 +7,7 @@ import FabricDNACard from "./components/FabricDNACard";
 import WeavingLoader from "./components/WeavingLoader";
 import FollowUpQuestions from "./components/FollowUpQuestions";
 import SavePngButton from "./components/SavePngButton";
+import PublishButton from "./components/PublishButton";
 import { useAnalyze } from "./hooks/useAnalyze";
 import { useFollowUp } from "./hooks/useFollowUp";
 import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
@@ -197,6 +198,12 @@ export default function Home() {
             所有问题已回答完毕。Fabric DNA 已构建完成。
           </div>
           <SavePngButton targetRef={cardRef} />
+          <PublishButton
+            dna={dna}
+            text={text}
+            images={images}
+            aiProvider={aiProvider}
+          />
         </>
       )}
 
