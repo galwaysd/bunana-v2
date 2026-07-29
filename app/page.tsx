@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import ImageUploader from "./components/ImageUploader";
 import TextInput from "./components/TextInput";
 import FabricDNACard from "./components/FabricDNACard";
 import WeavingLoader from "./components/WeavingLoader";
 import FollowUpQuestions from "./components/FollowUpQuestions";
+import SavePngButton from "./components/SavePngButton";
 import { useAnalyze } from "./hooks/useAnalyze";
 import { useFollowUp } from "./hooks/useFollowUp";
 import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
@@ -21,6 +22,9 @@ export default function Home() {
   const [followUpQuestions, setFollowUpQuestions] = useState<FollowUpQuestion[]>([]);
   const [answeredLog, setAnsweredLog] = useState<Record<string, string>>({});
   const [phase, setPhase] = useState<FlowPhase>("idle");
+
+  // ----- Card ref (for PNG export) -----
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // ----- Hooks -----
   const {
@@ -154,6 +158,7 @@ export default function Home() {
       {/* Fabric DNA Card */}
       {dna && (
         <FabricDNACard
+          ref={cardRef}
           dna={dna}
           aiProvider={aiProvider}
           followUpQuestions={followUpQuestions}
@@ -176,20 +181,23 @@ export default function Home() {
 
       {/* Done */}
       {phase === "done" && dna && (
-        <div
-          style={{
-            marginTop: "1.25rem",
-            padding: "1rem 1.25rem",
-            borderRadius: "12px",
-            background: "#e8f5e9",
-            border: "1px solid #a5d6a7",
-            color: "#2e7d32",
-            fontSize: "0.9rem",
-            textAlign: "center"
-          }}
-        >
-          所有问题已回答完毕。Fabric DNA 已构建完成。
-        </div>
+        <>
+          <div
+            style={{
+              marginTop: "1.25rem",
+              padding: "1rem 1.25rem",
+              borderRadius: "12px",
+              background: "#e8f5e9",
+              border: "1px solid #a5d6a7",
+              color: "#2e7d32",
+              fontSize: "0.9rem",
+              textAlign: "center"
+            }}
+          >
+            所有问题已回答完毕。Fabric DNA 已构建完成。
+          </div>
+          <SavePngButton targetRef={cardRef} />
+        </>
       )}
 
       {/* Debug: answeredLog */}

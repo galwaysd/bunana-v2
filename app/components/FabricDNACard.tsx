@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import type { FabricDNA, FollowUpQuestion } from "@/app/types";
 import { DNA_FIELD_LABELS } from "@/app/lib/dna";
 
@@ -23,12 +24,27 @@ const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }
   missing: { bg: "#fafafa", border: "#e0e0e0", text: "#9e9e9e" }
 };
 
-export default function FabricDNACard({
-  dna,
-  aiProvider,
-  followUpQuestions
-}: Props) {
-  const fields = Object.entries(dna) as [keyof FabricDNA, FabricDNA[keyof FabricDNA]][];
+/** PNG 导出展示的 12 个字段（不含 quantity / destinationMarket） */
+const DISPLAY_FIELDS: (keyof FabricDNA)[] = [
+  "fabricName",
+  "use",
+  "composition",
+  "weave",
+  "weightGsm",
+  "width",
+  "coating",
+  "waterproof",
+  "moq",
+  "leadTime",
+  "color",
+  "features"
+];
+
+const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
+  { dna, aiProvider, followUpQuestions },
+  ref
+) {
+  const fields = DISPLAY_FIELDS.map((key) => [key, dna[key]] as const);
 
   const identifiedCount = fields.filter(
     ([, f]) => f.status === "identified" || f.status === "inferred"
@@ -38,6 +54,7 @@ export default function FabricDNACard({
 
   return (
     <div
+      ref={ref}
       style={{
         marginTop: "1.5rem",
         border: "1px solid #e0e0e0",
@@ -225,4 +242,6 @@ export default function FabricDNACard({
       </div>
     </div>
   );
-}
+});
+
+export default FabricDNACard;
