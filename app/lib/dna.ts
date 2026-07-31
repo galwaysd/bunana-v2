@@ -101,6 +101,41 @@ export function mergeDnaAnswer(
 }
 
 /**
+ * 统一字段状态语义：空值必须 missing；initial 阶段不允许 confirmed；
+ * 非用户来源的 confirmed 按来源降级为 identified / inferred。
+ */
+export function normalizeDnaStatuses(
+  dna: FabricDNA,
+  allowUserConfirmed = true
+): FabricDNA {
+  const normalized = { ...dna };
+
+  for (const key of DNA_FIELD_KEYS) {
+    const field = dna[key];
+    const value = field.value.trim();
+
+    if (!value) {
+      normalized[key] = createEmptyField();
+      continue;
+    }
+
+    if (allowUserConfirmed && field.source === "user_input") {
+      normalized[key] = { ...field, value, status: "confirmed", confidence: 1 };
+      continue;
+    }
+
+    if (field.status === "inferred" || field.source === "inference") {
+      normalized[key] = { ...field, value, status: "inferred" };
+      continue;
+    }
+
+    normalized[key] = { ...field, value, status: "identified" };
+  }
+
+  return normalized;
+}
+
+/**
  * 从 text 中判定需求模式：找布（缺配）还是 有布（供应）
  */
 export function inferDemandMode(text: string): "找" | "有" {

@@ -31,8 +31,8 @@ export function runDemoInitial(text: string, images: ImagePayload[], language: s
     category,
     dna,
     demandCard: {
-      fabricName: dna.fabricName.value || inferFabricName(text, category),
-      use: dna.use.value || inferUse(text, category),
+      fabricName: dna.fabricName.value,
+      use: dna.use.value,
       specs: buildSpecsFromDNA(dna) || extractSpecs(text),
       quantity: dna.quantity.value || extractQuantity(text),
       destinationMarket: dna.destinationMarket.value || extractMarket(text),
@@ -75,8 +75,8 @@ export function runDemoRefine(
     [question.id]: answer
   };
 
-  // 3. 重新生成追问，过滤已回答的
-  let questions = buildStructuredFollowUpQuestions(updatedDNA);
+  // 3. 重新生成追问，过滤已回答的（最多 4 个）
+  let questions = buildStructuredFollowUpQuestions(updatedDNA).slice(0, 4);
   questions = filterAnsweredQuestions(questions, newAnsweredLog);
 
   // 4. 如果答案中包含额外规格信息，也提取到 DNA
@@ -159,22 +159,26 @@ function extractAdditionalInfo(
 function buildDemoDNA(text: string, category: string, images: ImagePayload[]): FabricDNA {
   const dna = createEmptyDNA();
 
-  // 面料名称提取: "210D牛津布", "春亚纺" 等
+  // 面料名称提取: "210D牛津布", "190T涤塔夫", "春亚纺" 等
+  // 注意：\S{1,8} 不能跨标点，必须在逗号/句号等处停止
   const fabricMatch = text.match(
-    /(\d{2,4}[dD]\s*\S{1,8}布|\d{2,4}[dD]\s*\S{1,8}|春亚纺|涤塔夫|尼丝纺|塔丝隆|牛津布)/
+    /(\d{2,4}[dDT]\s*[\u4e00-\u9fa5A-Za-z]{1,8}布|\d{2,4}[dDT]\s*[\u4e00-\u9fa5A-Za-z]{1,8}|春亚纺|涤塔夫|尼丝纺|塔丝隆|牛津布)/
   );
   if (fabricMatch) {
     dna.fabricName = dnaField(fabricMatch[0], "identified", 0.95, "text_extraction");
   }
 
-  // 用途提取
+  // 用途提取: 支持 "用于XX", "用来做XX", "雨伞用防水布", "箱包用面料" 等模式
   const useMatch = text.match(
-    /(?:做|用于|来做|做点|用来做)\s*([^，,。；;！!\s]{2,12}(?:背包|箱包|帐篷|窗帘|衣服|服装|包|袋)?)/
+    /(?:做|用于|来做|做点|用来做)\s*([^，,。；!！\s]{2,12}(?:背包|箱包|帐篷|窗帘|衣服|服装|包|袋)?)/
+  );
+  const usePrefixMatch = text.match(
+    /([^，,。；!！\s]{2,12})?(?:用|用来)([^，,。；!！\s]{2,12})/
   );
   const useFallback = text.match(
     /(?:户外|旅行|登山|骑行|运动|酒店|家居|医疗|工业)(?:背包|箱包|帐篷|窗帘|服装)/
   );
-  const extractedUse = useMatch?.[1] || useFallback?.[0];
+  const extractedUse = useMatch?.[1] || usePrefixMatch?.[1] || usePrefixMatch?.[2] || useFallback?.[0];
   if (extractedUse) {
     dna.use = dnaField(extractedUse, "identified", 0.9, "text_extraction");
   }
@@ -199,6 +203,12 @@ function buildDemoDNA(text: string, category: string, images: ImagePayload[]): F
   // 防水
   if (/防水|防泼水|抗水/i.test(text)) {
     dna.waterproof = dnaField("防水要求高", "inferred", 0.5, "text_extraction");
+  }
+
+  // 涂层
+  const coatingMatch = text.match(/(PU|PA|PVC|TPU)\s*涂层/i);
+  if (coatingMatch) {
+    dna.coating = dnaField(coatingMatch[0], "identified", 0.9, "text_extraction");
   }
 
   // 阻燃
@@ -240,16 +250,8 @@ function inferCategory(text: string): string {
 }
 
 function inferFabricName(text: string, category: string): string {
-  const match = text.match(/(\d{2,4}D[\u4e00-\u9fa5A-Za-z]*)/i);
+  const match = text.match(/(\d{2,4}[DdTt][\u4e00-\u9fa5A-Za-z]*)/i);
   return match?.[1] || category;
-}
-
-function inferUse(text: string, category: string): string {
-  if (text.includes("酒店")) return `酒店${category}`;
-  if (text.includes("箱包") || text.includes("包袋")) return "箱包/包袋";
-  if (text.includes("户外")) return "户外用品";
-  if (text.includes("出口")) return "出口采购";
-  return category;
 }
 
 // ===== 规格提取 =====

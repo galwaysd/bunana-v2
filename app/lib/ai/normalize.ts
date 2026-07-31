@@ -13,7 +13,7 @@ import type {
   DemandResult,
   ImagePayload
 } from "@/app/types";
-import { createEmptyDNA, DNA_FIELD_KEYS } from "@/app/lib/dna";
+import { createEmptyDNA, DNA_FIELD_KEYS, normalizeDnaStatuses } from "@/app/lib/dna";
 
 // ===== 工具函数 =====
 
@@ -98,7 +98,7 @@ export function sanitizeDNA(value: unknown): FabricDNA {
       };
     }
   }
-  return dna;
+  return normalizeDnaStatuses(dna);
 }
 
 // ===== FollowUpQuestions 标准化 =====
@@ -190,65 +190,77 @@ export function buildStructuredFollowUpQuestions(dna: FabricDNA): FollowUpQuesti
   }> = [];
 
   const Q: Record<string, { field: keyof FabricDNA; question: string; options: string[]; priority: number }> = {
+    fabricName: {
+      field: "fabricName",
+      question: "这块面料的名称或常用叫法是什么？",
+      options: ["牛津布", "春亚纺", "涤塔夫", "不确定"],
+      priority: 1
+    },
+    use: {
+      field: "use",
+      question: "这块面料最终用于什么产品或场景？",
+      options: ["服装", "箱包", "帐篷", "家纺"],
+      priority: 2
+    },
     weightGsm: {
       field: "weightGsm",
       question: "克重大概在什么范围？",
       options: ["60-80gsm", "100-120gsm", "150gsm+", "不确定"],
-      priority: 1
+      priority: 3
     },
     width: {
       field: "width",
       question: "幅宽需要多少？",
       options: ["150cm", "180cm", "210cm+", "不确定"],
-      priority: 2
+      priority: 4
     },
     coating: {
       field: "coating",
       question: "需要什么涂层处理？",
       options: ["PU涂层", "PA涂层", "PVC涂层", "不需要涂层"],
-      priority: 3
+      priority: 5
     },
     moq: {
       field: "moq",
       question: "最小起订量是多少？",
       options: ["1000米", "3000米", "5000米", "面议"],
-      priority: 4
+      priority: 6
     },
     composition: {
       field: "composition",
       question: "面料成分是什么？",
       options: ["涤纶", "尼龙", "棉涤混纺", "不确定"],
-      priority: 5
+      priority: 7
     },
     weave: {
       field: "weave",
       question: "需要什么织法？",
       options: ["平纹", "斜纹", "牛津", "缎纹"],
-      priority: 6
+      priority: 8
     },
     waterproof: {
       field: "waterproof",
       question: "防水等级有具体要求吗？",
       options: ["普通防泼水", "PU800", "PU1500+", "不需要防水"],
-      priority: 7
+      priority: 9
     },
     leadTime: {
       field: "leadTime",
       question: "交期有什么要求？",
       options: ["现货", "7天内", "15天内", "30天内"],
-      priority: 8
+      priority: 10
     },
     color: {
       field: "color",
       question: "颜色有什么偏好？",
       options: ["黑色", "藏青", "军绿", "卡其"],
-      priority: 9
+      priority: 11
     },
     features: {
       field: "features",
       question: "需要任何特殊工艺或特性吗？",
       options: ["阻燃", "抗UV", "防静电", "不需要"],
-      priority: 10
+      priority: 12
     }
   };
 
@@ -292,7 +304,7 @@ export function ensureUsableResult(
     category: result.category && result.category !== "其他面料"
       ? result.category
       : fallback.category,
-    dna: result.dna?.fabricName?.value ? result.dna : fallback.dna,
+    dna: mergeDNA(result.dna, fallback.dna),
     demandCard,
     missingFields:
       result.missingFields.length > 0 ? result.missingFields : fallback.missingFields,
@@ -310,6 +322,14 @@ export function ensureUsableResult(
   safe.followUpQuestions = buildStructuredFollowUpQuestions(safe.dna).slice(0, 4);
 
   return safe;
+}
+
+function mergeDNA(primary: FabricDNA, fallback: FabricDNA): FabricDNA {
+  const merged = createEmptyDNA();
+  for (const key of DNA_FIELD_KEYS) {
+    merged[key] = primary[key].value ? primary[key] : fallback[key];
+  }
+  return normalizeDnaStatuses(merged, false);
 }
 
 // ===== refine 专用的 DNA 合并结果 =====
