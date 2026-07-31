@@ -20,7 +20,8 @@ import type {
 import { runZhipuInitial, runZhipuRefine, hasZhipuApiKey, zhipuModel } from "@/app/lib/ai/providers/zhipu";
 import { runDifyInitial, hasDifyApiKey } from "@/app/lib/ai/providers/dify";
 import { runDemoInitial, runDemoRefine } from "@/app/lib/ai/demo";
-import { filterAnsweredQuestions } from "@/app/lib/ai/normalize";
+import { buildStructuredFollowUpQuestions, filterAnsweredQuestions } from "@/app/lib/ai/normalize";
+import { mergeDnaAnswer, normalizeDnaStatuses } from "@/app/lib/dna";
 
 export const runtime = "nodejs";
 
@@ -123,6 +124,9 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
     aiProvider = "demo";
   }
 
+  result.dna = normalizeDnaStatuses(result.dna, false);
+  result.followUpQuestions = buildStructuredFollowUpQuestions(result.dna).slice(0, 4);
+
   return json(200, {
     success: true,
     aiProvider,
@@ -196,8 +200,15 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
     [question.id]: answer
   };
 
-  // 过滤已回答的问题
-  followUpQuestions = filterAnsweredQuestions(followUpQuestions, newAnsweredLog);
+  // API 层保证当前用户回答立即写回，且只有用户输入能成为 confirmed。
+  updatedDNA = normalizeDnaStatuses(updatedDNA);
+  updatedDNA = mergeDnaAnswer(updatedDNA, question.field, answer);
+
+  // 始终根据写回后的真实 DNA 重新生成追问，并过滤已回答字段。
+  followUpQuestions = filterAnsweredQuestions(
+    buildStructuredFollowUpQuestions(updatedDNA),
+    newAnsweredLog
+  ).slice(0, 4);
 
   return json(200, {
     success: true,
