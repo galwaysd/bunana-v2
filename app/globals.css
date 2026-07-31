@@ -89,18 +89,23 @@
 
   /* Layout */
   --topbar-height: 52px;
-  --input-panel-width: 340px;
-  --channel-width: 60px;
-  --content-max-width: 1280px;
+  --input-panel-width: 320px;
+  --channel-width: 72px;
+  --content-max-width: 1200px;
+  --shuttle-height: 80px;
 }
 
 /* ----- Global ----- */
+html {
+  background: #f2efe9;
+}
+
 body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.6;
   color: var(--color-text-primary);
-  background: var(--color-paper);
+  background: #f2efe9;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -190,12 +195,16 @@ input:focus-visible {
    ======================================== */
 .workbench-page {
   min-height: calc(100vh - var(--topbar-height));
+  display: flex;
+  flex-direction: column;
 }
 
 .workbench-body {
+  flex: 1;
   max-width: var(--content-max-width);
+  width: 100%;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-5) var(--space-6) 0;
   display: grid;
   grid-template-columns: var(--input-panel-width) var(--channel-width) 1fr;
   gap: 0;
@@ -205,15 +214,19 @@ input:focus-visible {
 /* ----- Left: Input Panel ----- */
 .input-panel {
   position: sticky;
-  top: calc(var(--topbar-height) + var(--space-8));
+  top: calc(var(--topbar-height) + var(--space-5));
+  background: #fafaf8;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-label {
   font-family: var(--font-serif);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   margin-bottom: var(--space-4);
   padding-bottom: var(--space-2);
   border-bottom: 1px dashed var(--color-border);
@@ -225,106 +238,314 @@ input:focus-visible {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 400px;
-  padding-top: var(--space-8);
+  padding: var(--space-6) 0;
+  min-height: 320px;
 }
 
-.channel-line {
-  width: 2px;
+/* Horizontal warp threads */
+.weaving-channel::before,
+.weaving-channel::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 1px;
+  background: var(--color-border);
+}
+.weaving-channel::before { top: 28%; }
+.weaving-channel::after  { bottom: 28%; }
+
+/* Left / right edge ticks (entry & exit) */
+.channel-edge-left,
+.channel-edge-right {
+  position: absolute;
+  width: 12px;
+  height: 2px;
+  background: var(--color-border-strong);
+}
+.channel-edge-left  { left: 0; top: 50%; transform: translateY(-50%); }
+.channel-edge-right { right: 0; top: 50%; transform: translateY(-50%); }
+
+/* Spine — center vertical path */
+.channel-spine {
+  position: relative;
+  width: 1px;
   flex: 1;
   min-height: 200px;
-  background: linear-gradient(
-    to bottom,
-    var(--color-border-strong),
-    var(--color-border) 40%,
-    var(--color-border) 60%,
-    var(--color-border-strong)
-  );
-  border-radius: 1px;
+  background: var(--color-border-strong);
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
 }
 
-.channel-line.active {
-  background: linear-gradient(
-    to bottom,
-    var(--color-brand-400),
-    var(--color-brand-200) 50%,
-    var(--color-brand-400)
-  );
+/* Diamond nodes on the spine */
+.channel-node {
+  width: 10px;
+  height: 10px;
+  background: var(--color-border-strong);
+  border: 1.5px solid var(--color-text-muted);
+  transform: rotate(45deg);
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
 }
 
-.channel-line.complete {
-  background: linear-gradient(
-    to bottom,
-    var(--color-success),
-    var(--color-brand-300) 50%,
-    var(--color-success)
-  );
+/* State tinting (color only on nodes + spine) */
+.weaving-channel.active .channel-spine {
+  background: var(--color-brand-400);
+}
+.weaving-channel.active .channel-node {
+  background: var(--color-brand-300);
+  border-color: var(--color-brand-500);
+}
+
+.weaving-channel.complete .channel-spine {
+  background: var(--color-success);
+}
+.weaving-channel.complete .channel-node {
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
 }
 
 /* ----- Right: Output Panel ----- */
 .output-panel {
   padding-left: var(--space-6);
+  background: #fafaf8;
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md);
 }
 
 /* ========================================
-   DNA Placeholder (idle / analyzing)
+   Fabric DNA — Identity Card
    ======================================== */
-.dna-placeholder {
-  background: var(--color-surface);
-  border: 2px dashed var(--color-border);
+.dna-id-card {
+  margin-top: var(--space-3);
+  background: #fff;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-8) var(--space-6);
-  min-height: 320px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+/* ----- Header ----- */
+.dna-id-header {
+  padding: var(--space-4) var(--space-5);
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
   background-image: var(--texture-fabric);
 }
 
-.dna-placeholder-label {
-  font-family: var(--font-serif);
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  letter-spacing: 0.04em;
-}
-
-.dna-placeholder-frame {
-  width: 100%;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-6);
-  background: var(--color-paper);
-  background-image: var(--texture-twill);
-}
-
-.dna-placeholder-rows {
+.dna-id-titles {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: var(--space-3);
 }
 
-.dna-placeholder-row {
+.dna-id-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-brand-700);
+  letter-spacing: 0.04em;
+}
+
+.dna-id-subtitle {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.dna-id-provider {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+/* ----- Identity Band ----- */
+.dna-id-band {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-brand-50);
+  background-image: var(--texture-twill);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dna-id-band-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+
+.dna-id-band-label {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  width: 56px;
+  flex-shrink: 0;
+}
+
+.dna-id-band-value {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.dna-id-band-value.sm {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* ----- Status Stamps (band) ----- */
+.dna-id-stamp {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 0.66rem;
+  font-family: var(--font-mono);
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1.6;
+}
+
+.s-confirmed {
+  background: #e3f2fd;
+  border: 1px solid #90caf9;
+  color: #1565c0;
+}
+.s-identified {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  color: #2e7d32;
+}
+.s-inferred {
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  color: #e65100;
+}
+.s-missing {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+
+/* ----- Summary Bar ----- */
+.dna-id-summary {
+  padding: var(--space-2) var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: 0.76rem;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.sum-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sum-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-confirmed { background: #2196f3; }
+.dot-identified { background: #4caf50; }
+.dot-inferred  { background: #ff9800; }
+.dot-missing   { background: #c8c2b6; }
+.dot-pending   { background: #ff9800; }
+
+/* ----- Spec Fields Grid ----- */
+.dna-id-fields {
+  padding: var(--space-4) var(--space-5);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-8);
+}
+
+.dna-id-field {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
   padding: var(--space-2) 0;
   border-bottom: 1px dotted var(--color-border);
 }
 
-.dna-placeholder-row .ph-label {
-  width: 80px;
-  height: 12px;
-  background: var(--color-border);
-  border-radius: 3px;
+.dna-id-field-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  width: 52px;
+  flex-shrink: 0;
 }
 
-.dna-placeholder-row .ph-value {
-  width: 120px;
-  height: 12px;
+.dna-id-field-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dna-id-field-value.is-empty {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.field-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ----- Placeholder variant (idle / analyzing) ----- */
+.dna-id-card.is-placeholder {
+  box-shadow: var(--shadow-sm);
+}
+
+.dna-id-card.is-placeholder .dna-id-band-value {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.dna-id-card.is-placeholder .dna-id-provider {
+  color: var(--color-text-muted);
+  border-style: dashed;
+}
+
+.dna-id-card.is-placeholder .dna-id-band {
   background: var(--color-surface);
-  border-radius: 3px;
+  background-image: var(--texture-fabric);
+}
+
+.dna-id-status-text {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-family: var(--font-serif);
+  letter-spacing: 0.04em;
 }
 
 /* ========================================
@@ -423,8 +644,130 @@ input:focus-visible {
 }
 
 /* ========================================
-   Fabric DNA Card (PNG export bg)
+   Follow-up history controls
    ======================================== */
-.fabric-dna-card {
+.followup-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.followup-back-button {
+  border: 0;
+  padding: 2px 0;
+  background: transparent;
+  color: var(--color-brand-600);
+  font-family: var(--font-serif);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.followup-back-button:hover:not(:disabled) {
+  color: var(--color-brand-800);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.followup-back-button:disabled {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.followup-complete-actions {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.followup-answer-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.followup-answer-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
   background: #fff;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.followup-answer-input:focus {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px var(--color-brand-100);
+}
+
+.followup-submit-button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-500);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.followup-submit-button:hover:not(:disabled) {
+  background: var(--color-brand-600);
+}
+
+.followup-submit-button:disabled {
+  background: var(--color-border-strong);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+/* ========================================
+   Shuttle Track (追问织入区)
+   ======================================== */
+.shuttle-track {
+  height: var(--shuttle-height);
+  border-top: 1px solid var(--color-border);
+  background: #fafaf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.shuttle-track-label {
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shuttle-track-line {
+  width: 240px;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-border-strong) 30%,
+    var(--color-border-strong) 70%,
+    transparent
+  );
 }

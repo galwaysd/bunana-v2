@@ -14,10 +14,18 @@ import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
 
 type FlowPhase = "idle" | "analyzing" | "followUp" | "done";
 
+type AnswerHistoryItem = {
+  dnaBefore: FabricDNA;
+  questionsBefore: FollowUpQuestion[];
+  answeredLogBefore: Record<string, string>;
+  answer: string;
+};
+
 function channelState(phase: FlowPhase): string {
-  if (phase === "done") return "channel-line complete";
-  if (phase === "analyzing" || phase === "followUp") return "channel-line active";
-  return "channel-line";
+  const base = "weaving-channel";
+  if (phase === "done") return `${base} complete`;
+  if (phase === "analyzing" || phase === "followUp") return `${base} active`;
+  return base;
 }
 
 export default function Home() {
@@ -28,10 +36,13 @@ export default function Home() {
   const [dna, setDna] = useState<FabricDNA | null>(null);
   const [followUpQuestions, setFollowUpQuestions] = useState<FollowUpQuestion[]>([]);
   const [answeredLog, setAnsweredLog] = useState<Record<string, string>>({});
+  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryItem[]>([]);
+  const [answerToEdit, setAnswerToEdit] = useState("");
   const [phase, setPhase] = useState<FlowPhase>("idle");
 
   // ----- Card ref (for PNG export) -----
   const cardRef = useRef<HTMLDivElement>(null);
+  const refineActionInFlight = useRef(false);
 
   // ----- Hooks -----
   const {
@@ -54,6 +65,8 @@ export default function Home() {
     setDna(null);
     setFollowUpQuestions([]);
     setAnsweredLog({});
+    setAnswerHistory([]);
+    setAnswerToEdit("");
 
     const result = await analyze(text, images);
 
@@ -69,25 +82,51 @@ export default function Home() {
   // ----- Refine (answer follow-up) -----
   const handleRefineAnswer = useCallback(
     async (answer: string) => {
-      if (!dna || followUpQuestions.length === 0) return;
+      if (!dna || followUpQuestions.length === 0 || refineActionInFlight.current) return;
+      refineActionInFlight.current = true;
 
       const question = followUpQuestions[0];
+      const historyItem: AnswerHistoryItem = {
+        dnaBefore: dna,
+        questionsBefore: followUpQuestions,
+        answeredLogBefore: answeredLog,
+        answer
+      };
       clearFollowUpError();
 
-      const result = await refine(dna, question, answer, answeredLog);
+      try {
+        const result = await refine(dna, question, answer, answeredLog);
 
-      if (!result) return; // error: DNA + question + answer preserved
+        if (!result) return; // error: DNA + question preserved
 
-      setDna(result.dna);
-      setAnsweredLog(result.answeredLog);
-      setFollowUpQuestions(result.followUpQuestions);
+        setDna(result.dna);
+        setAnsweredLog(result.answeredLog);
+        setFollowUpQuestions(result.followUpQuestions);
+        setAnswerHistory((history) => [...history, historyItem]);
+        setAnswerToEdit("");
 
-      if (result.followUpQuestions.length === 0) {
-        setPhase("done");
+        if (result.followUpQuestions.length === 0) {
+          setPhase("done");
+        }
+      } finally {
+        refineActionInFlight.current = false;
       }
     },
     [dna, followUpQuestions, answeredLog, refine, clearFollowUpError]
   );
+
+  const handleBackQuestion = useCallback(() => {
+    const previous = answerHistory[answerHistory.length - 1];
+    if (!previous || refineSubmitting) return;
+
+    clearFollowUpError();
+    setDna(previous.dnaBefore);
+    setFollowUpQuestions(previous.questionsBefore);
+    setAnsweredLog(previous.answeredLogBefore);
+    setAnswerHistory((history) => history.slice(0, -1));
+    setAnswerToEdit(previous.answer);
+    setPhase("followUp");
+  }, [answerHistory, refineSubmitting, clearFollowUpError]);
 
   const canAnalyze =
     (text.trim().length > 0 || images.length > 0) && !initialLoading;
@@ -117,6 +156,7 @@ export default function Home() {
           {/* Analyze button —— idle 状态：图片或文字有其一即可用 */}
           {phase !== "followUp" && phase !== "done" && (
             <button
+              type="button"
               onClick={handleInitialAnalyze}
               disabled={!canAnalyze}
               className="btn-weave"
@@ -124,11 +164,48 @@ export default function Home() {
               {phase === "analyzing" ? "织卡中…" : "开始织卡"}
             </button>
           )}
+
+          {/* Follow-up questions stay with the input workbench. */}
+          {phase === "followUp" && dna && followUpQuestions.length > 0 && (
+            <FollowUpQuestions
+              key={followUpQuestions[0].id}
+              question={followUpQuestions[0]}
+              questionIndex={answerHistory.length}
+              totalCount={answerHistory.length + followUpQuestions.length}
+              submitting={refineSubmitting}
+              error={refineError}
+              initialAnswer={answerToEdit}
+              canGoBack={answerHistory.length > 0}
+              onBack={handleBackQuestion}
+              onSubmit={handleRefineAnswer}
+            />
+          )}
+
+          {phase === "done" && answerHistory.length > 0 && (
+            <div className="followup-complete-actions">
+              <span>问答已完成</span>
+              <button
+                type="button"
+                className="followup-back-button"
+                onClick={handleBackQuestion}
+              >
+                ← 返回上一题
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* ======== Center: Weaving Channel ======== */}
-        <div className="weaving-channel">
-          <div className={channelState(phase)} />
+        <div className={channelState(phase)}>
+          <span className="channel-edge-left" />
+          <span className="channel-edge-right" />
+          <div className="channel-spine">
+            <span className="channel-node" />
+            <span className="channel-node" />
+            <span className="channel-node" />
+            <span className="channel-node" />
+            <span className="channel-node" />
+          </div>
         </div>
 
         {/* ======== Right: Output Panel ======== */}
@@ -151,40 +228,47 @@ export default function Home() {
               followUpQuestions={followUpQuestions}
             />
           ) : (
-            /* DNA 空占位（idle / analyzing 时显示） */
-            <div className="dna-placeholder">
-              <span className="dna-placeholder-label">
-                {phase === "analyzing" ? "AI 正在读取布样数据…" : "FABRIC DNA"}
-              </span>
-              <div className="dna-placeholder-frame">
-                <div className="dna-placeholder-rows">
-                  {[
-                    "面料名称", "用途", "成分", "织法",
-                    "克重", "幅宽", "涂层", "防水性",
-                    "起订量", "交期", "颜色", "特性"
-                  ].map((label) => (
-                    <div className="dna-placeholder-row" key={label}>
-                      <div className="ph-label" />
-                      <div className="ph-value" />
-                    </div>
-                  ))}
+            /* DNA 身份证占位（idle / analyzing 时显示） */
+            <div className="dna-id-card is-placeholder">
+              <div className="dna-id-header">
+                <div className="dna-id-titles">
+                  <span className="dna-id-title">FABRIC DNA</span>
+                  <span className="dna-id-subtitle">织物身份证</span>
+                </div>
+                <span className="dna-id-provider">
+                  {phase === "analyzing" ? "读取中…" : "待织入"}
+                </span>
+              </div>
+              <div className="dna-id-band">
+                <div className="dna-id-band-row">
+                  <span className="dna-id-band-label">面料名称</span>
+                  <span className="dna-id-band-value">—</span>
+                </div>
+                <div className="dna-id-band-row">
+                  <span className="dna-id-band-label">用途</span>
+                  <span className="dna-id-band-value sm">—</span>
                 </div>
               </div>
+              <div className="dna-id-summary">
+                <span className="dna-id-status-text">
+                  {phase === "analyzing"
+                    ? "AI 正在读取布样数据…"
+                    : "上传布样或描述需求后开始织卡"}
+                </span>
+              </div>
+              <div className="dna-id-fields">
+                {[
+                  "成分", "织法", "克重", "幅宽", "涂层",
+                  "防水", "起订量", "交期", "颜色", "特性"
+                ].map((label) => (
+                  <div className="dna-id-field" key={label}>
+                    <span className="dna-id-field-label">{label}</span>
+                    <span className="dna-id-field-value is-empty">—</span>
+                    <span className="field-dot dot-missing" />
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-
-          {/* Follow-up question flow */}
-          {phase === "followUp" && dna && followUpQuestions.length > 0 && (
-            <FollowUpQuestions
-              question={followUpQuestions[0]}
-              questionIndex={Object.keys(answeredLog).length}
-              totalCount={
-                followUpQuestions.length + Object.keys(answeredLog).length
-              }
-              submitting={refineSubmitting}
-              error={refineError}
-              onSubmit={handleRefineAnswer}
-            />
           )}
 
           {/* Done */}
@@ -203,15 +287,13 @@ export default function Home() {
             </>
           )}
 
-          {/* Debug: answeredLog */}
-          {phase === "done" && Object.keys(answeredLog).length > 0 && (
-            <details className="debug-log">
-              <summary>answeredLog</summary>
-              <pre>{JSON.stringify(answeredLog, null, 2)}</pre>
-            </details>
-          )}
-
         </section>
+      </div>
+
+      {/* ======== Bottom: Shuttle Track ======== */}
+      <div className="shuttle-track">
+        <span className="shuttle-track-label">梭子追问轨道</span>
+        <div className="shuttle-track-line" />
       </div>
     </div>
   );

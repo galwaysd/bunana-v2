@@ -10,6 +10,9 @@ type Props = {
   totalCount: number;
   submitting: boolean;
   error: string;
+  initialAnswer?: string;
+  canGoBack: boolean;
+  onBack: () => void;
   onSubmit: (answer: string) => void;
 };
 
@@ -19,9 +22,12 @@ export default function FollowUpQuestions({
   totalCount,
   submitting,
   error,
+  initialAnswer = "",
+  canGoBack,
+  onBack,
   onSubmit
 }: Props) {
-  const [answer, setAnswer] = useState("");
+  const [answer, setAnswer] = useState(initialAnswer);
 
   const handleSubmit = () => {
     const trimmed = answer.trim();
@@ -55,17 +61,29 @@ export default function FollowUpQuestions({
         <span style={{ fontSize: "0.85rem", color: "#666", fontWeight: 500 }}>
           追问 {questionIndex + 1} / {totalCount}
         </span>
-        <span
-          style={{
-            fontSize: "0.75rem",
-            color: "#999",
-            background: "#f0f0f0",
-            padding: "2px 8px",
-            borderRadius: "4px"
-          }}
-        >
-          {DNA_FIELD_LABELS[question.field] || question.field}
-        </span>
+        <div className="followup-header-actions">
+          {canGoBack && (
+            <button
+              type="button"
+              className="followup-back-button"
+              disabled={submitting}
+              onClick={onBack}
+            >
+              ← 返回上一题
+            </button>
+          )}
+          <span
+            style={{
+              fontSize: "0.75rem",
+              color: "#999",
+              background: "#f0f0f0",
+              padding: "2px 8px",
+              borderRadius: "4px"
+            }}
+          >
+            {DNA_FIELD_LABELS[question.field] || question.field}
+          </span>
+        </div>
       </div>
 
       {/* Question */}
@@ -116,7 +134,7 @@ export default function FollowUpQuestions({
         )}
 
         {/* Free text input */}
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
+        <div className="followup-answer-row">
           <input
             type="text"
             value={answer}
@@ -128,34 +146,15 @@ export default function FollowUpQuestions({
             }}
             placeholder="输入你的回答..."
             disabled={submitting}
-            style={{
-              flex: 1,
-              padding: "0.6rem 0.75rem",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              fontSize: "0.9rem",
-              outline: "none"
-            }}
+            className="followup-answer-input"
           />
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!answer.trim() || submitting}
-            style={{
-              padding: "0.6rem 1.25rem",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "0.9rem",
-              fontWeight: 500,
-              cursor:
-                answer.trim() && !submitting ? "pointer" : "not-allowed",
-              background:
-                answer.trim() && !submitting ? "#4a6741" : "#e0e0e0",
-              color: answer.trim() && !submitting ? "#fff" : "#999",
-              whiteSpace: "nowrap"
-            }}
+            className="followup-submit-button"
           >
-            {submitting ? "..." : "确认"}
+            {submitting ? "正在织入…" : "确认回答"}
           </button>
         </div>
       </div>

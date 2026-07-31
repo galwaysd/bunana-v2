@@ -17,13 +17,6 @@ const STATUS_LABELS: Record<string, string> = {
   missing: "缺失"
 };
 
-const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  identified: { bg: "#e8f5e9", border: "#4caf50", text: "#2e7d32" },
-  inferred: { bg: "#fff3e0", border: "#ff9800", text: "#e65100" },
-  confirmed: { bg: "#e3f2fd", border: "#2196f3", text: "#0d47a1" },
-  missing: { bg: "#fafafa", border: "#e0e0e0", text: "#9e9e9e" }
-};
-
 /** PNG 导出展示的 12 个字段（不含 quantity / destinationMarket） */
 const DISPLAY_FIELDS: (keyof FabricDNA)[] = [
   "fabricName",
@@ -40,205 +33,108 @@ const DISPLAY_FIELDS: (keyof FabricDNA)[] = [
   "features"
 ];
 
+/** 规格字段（excl. fabricName + use，它们进入身份标识区） */
+const SPEC_FIELDS: (keyof FabricDNA)[] = [
+  "composition", "weave", "weightGsm", "width", "coating",
+  "waterproof", "moq", "leadTime", "color", "features"
+];
+
 const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   { dna, aiProvider, followUpQuestions },
   ref
 ) {
-  const fields = DISPLAY_FIELDS.map((key) => [key, dna[key]] as const);
+  const nameField = dna.fabricName;
+  const useField = dna.use;
+  const specs = SPEC_FIELDS.map((key) => [key, dna[key]] as const);
 
-  const identifiedCount = fields.filter(
-    ([, f]) => f.status === "identified" || f.status === "inferred"
+  const identifiedCount = DISPLAY_FIELDS.filter(
+    (key) => dna[key].status === "identified"
   ).length;
-  const missingCount = fields.filter(([, f]) => f.status === "missing").length;
-  const confirmedCount = fields.filter(([, f]) => f.status === "confirmed").length;
+  const inferredCount = DISPLAY_FIELDS.filter(
+    (key) => dna[key].status === "inferred"
+  ).length;
+  const missingCount = DISPLAY_FIELDS.filter(
+    (key) => dna[key].status === "missing"
+  ).length;
+  const confirmedCount = DISPLAY_FIELDS.filter(
+    (key) => dna[key].status === "confirmed"
+  ).length;
 
   return (
-    <div
-      ref={ref}
-      style={{
-        marginTop: "1.5rem",
-        border: "1px solid #e0e0e0",
-        borderRadius: "12px",
-        background: "#fff",
-        overflow: "hidden"
-      }}
-      className="fabric-dna-card"
-    >
-      {/* Header */}
-      <div
-        style={{
-          padding: "1rem 1.25rem",
-          borderBottom: "1px solid #eee",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center"
-        }}
-      >
-        <h3 style={{ margin: 0, fontSize: "1.05rem", color: "#333" }}>
-          Fabric DNA
-        </h3>
-        <span
-          style={{
-            fontSize: "0.75rem",
-            color: "#999",
-            background: "#f5f5f5",
-            padding: "2px 8px",
-            borderRadius: "4px"
-          }}
-        >
-          {aiProvider}
-        </span>
+    <div ref={ref} className="dna-id-card">
+      {/* ── Header ── */}
+      <div className="dna-id-header">
+        <div className="dna-id-titles">
+          <span className="dna-id-title">FABRIC DNA</span>
+          <span className="dna-id-subtitle">织物身份证</span>
+        </div>
+        <span className="dna-id-provider">{aiProvider}</span>
       </div>
 
-      {/* Summary bar */}
-      <div
-        style={{
-          padding: "0.5rem 1.25rem",
-          display: "flex",
-          gap: "1rem",
-          fontSize: "0.8rem",
-          color: "#666",
-          borderBottom: "1px solid #f0f0f0",
-          background: "#fafafa"
-        }}
-      >
-        <span style={{ color: "#2e7d32" }}>
-          已识别 {identifiedCount}
-        </span>
-        <span style={{ color: "#666" }}>
-          缺失 {missingCount}
-        </span>
-        <span style={{ color: "#0d47a1" }}>
+      {/* ── Identity Band ── */}
+      <div className="dna-id-band">
+        <div className="dna-id-band-row">
+          <span className="dna-id-band-label">面料名称</span>
+          <span className="dna-id-band-value">
+            {nameField.value || "—"}
+          </span>
+          <span className={`dna-id-stamp s-${nameField.status}`}>
+            {STATUS_LABELS[nameField.status] ?? nameField.status}
+          </span>
+        </div>
+        <div className="dna-id-band-row">
+          <span className="dna-id-band-label">用途</span>
+          <span className="dna-id-band-value sm">
+            {useField.value || "—"}
+          </span>
+          <span className={`dna-id-stamp s-${useField.status}`}>
+            {STATUS_LABELS[useField.status] ?? useField.status}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Summary ── */}
+      <div className="dna-id-summary">
+        <span className="sum-item">
+          <i className="sum-dot dot-confirmed" />
           已确认 {confirmedCount}
         </span>
+        <span className="sum-item">
+          <i className="sum-dot dot-identified" />
+          已识别 {identifiedCount}
+        </span>
+        <span className="sum-item">
+          <i className="sum-dot dot-inferred" />
+          推测 {inferredCount}
+        </span>
+        <span className="sum-item">
+          <i className="sum-dot dot-missing" />
+          缺失 {missingCount}
+        </span>
         {followUpQuestions && followUpQuestions.length > 0 && (
-          <span style={{ color: "#e65100" }}>
+          <span className="sum-item">
+            <i className="sum-dot dot-pending" />
             待追问 {followUpQuestions.length}
           </span>
         )}
       </div>
 
-      {/* Fields table */}
-      <div style={{ overflowX: "auto" }}>
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            fontSize: "0.875rem"
-          }}
-        >
-          <thead>
-            <tr style={{ borderBottom: "1px solid #eee", background: "#fafafa" }}>
-              <th
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  textAlign: "left",
-                  color: "#999",
-                  fontWeight: 500,
-                  width: "20%"
-                }}
-              >
-                字段
-              </th>
-              <th
-                style={{
-                  padding: "0.5rem 0.5rem",
-                  textAlign: "left",
-                  color: "#999",
-                  fontWeight: 500,
-                  width: "40%"
-                }}
-              >
-                值
-              </th>
-              <th
-                style={{
-                  padding: "0.5rem 0.5rem",
-                  textAlign: "center",
-                  color: "#999",
-                  fontWeight: 500,
-                  width: "20%"
-                }}
-              >
-                状态
-              </th>
-              <th
-                style={{
-                  padding: "0.5rem 1.25rem",
-                  textAlign: "right",
-                  color: "#999",
-                  fontWeight: 500,
-                  width: "20%"
-                }}
-              >
-                置信度
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {fields.map(([key, field]) => {
-              const color = STATUS_COLORS[field.status] ?? STATUS_COLORS.missing;
-              return (
-                <tr
-                  key={key}
-                  style={{
-                    borderBottom: "1px solid #f5f5f5",
-                    background: field.status === "missing" ? "#fafafa" : "transparent"
-                  }}
-                >
-                  <td
-                    style={{
-                      padding: "0.5rem 1.25rem",
-                      color: "#333",
-                      fontWeight: 500
-                    }}
-                  >
-                    {DNA_FIELD_LABELS[key]}
-                  </td>
-                  <td
-                    style={{
-                      padding: "0.5rem 0.5rem",
-                      color: field.value ? "#111" : "#ccc"
-                    }}
-                  >
-                    {field.value || "—"}
-                  </td>
-                  <td
-                    style={{
-                      padding: "0.5rem 0.5rem",
-                      textAlign: "center"
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "1px 8px",
-                        borderRadius: "10px",
-                        fontSize: "0.75rem",
-                        background: color.bg,
-                        border: `1px solid ${color.border}`,
-                        color: color.text
-                      }}
-                    >
-                      {STATUS_LABELS[field.status] ?? field.status}
-                    </span>
-                  </td>
-                  <td
-                    style={{
-                      padding: "0.5rem 1.25rem",
-                      textAlign: "right",
-                      color: field.confidence > 0 ? "#333" : "#ccc"
-                    }}
-                  >
-                    {field.confidence > 0
-                      ? `${Math.round(field.confidence * 100)}%`
-                      : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* ── Spec Fields Grid ── */}
+      <div className="dna-id-fields">
+        {specs.map(([key, field]) => (
+          <div className="dna-id-field" key={key}>
+            <span className="dna-id-field-label">
+              {DNA_FIELD_LABELS[key]}
+            </span>
+            <span className={`dna-id-field-value${field.value ? "" : " is-empty"}`}>
+              {field.value || "—"}
+            </span>
+            <span
+              className={`field-dot dot-${field.status}`}
+              title={STATUS_LABELS[field.status] ?? field.status}
+            />
+          </div>
+        ))}
       </div>
     </div>
   );
