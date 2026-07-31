@@ -1,12 +1,14 @@
 "use client";
 
 import { forwardRef } from "react";
-import type { FabricDNA, FollowUpQuestion } from "@/app/types";
+import Image from "next/image";
+import type { FabricDNA, FollowUpQuestion, ImagePayload } from "@/app/types";
 import { DNA_FIELD_LABELS } from "@/app/lib/dna";
 
 type Props = {
   dna: FabricDNA;
   aiProvider: string;
+  images?: ImagePayload[];
   followUpQuestions?: FollowUpQuestion[];
 };
 
@@ -18,21 +20,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 /** PNG 导出展示的 12 个字段（不含 quantity / destinationMarket） */
-const DISPLAY_FIELDS: (keyof FabricDNA)[] = [
-  "fabricName",
-  "use",
-  "composition",
-  "weave",
-  "weightGsm",
-  "width",
-  "coating",
-  "waterproof",
-  "moq",
-  "leadTime",
-  "color",
-  "features"
-];
-
 /** 规格字段（excl. fabricName + use，它们进入身份标识区） */
 const SPEC_FIELDS: (keyof FabricDNA)[] = [
   "composition", "weave", "weightGsm", "width", "coating",
@@ -40,35 +27,59 @@ const SPEC_FIELDS: (keyof FabricDNA)[] = [
 ];
 
 const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
-  { dna, aiProvider, followUpQuestions },
+  { dna, images = [] },
   ref
 ) {
   const nameField = dna.fabricName;
   const useField = dna.use;
   const specs = SPEC_FIELDS.map((key) => [key, dna[key]] as const);
 
-  const identifiedCount = DISPLAY_FIELDS.filter(
-    (key) => dna[key].status === "identified"
-  ).length;
-  const inferredCount = DISPLAY_FIELDS.filter(
-    (key) => dna[key].status === "inferred"
-  ).length;
-  const missingCount = DISPLAY_FIELDS.filter(
-    (key) => dna[key].status === "missing"
-  ).length;
-  const confirmedCount = DISPLAY_FIELDS.filter(
-    (key) => dna[key].status === "confirmed"
-  ).length;
 
   return (
     <div ref={ref} className="dna-id-card">
+      {images.length > 0 && (
+        <div
+          className="dna-id-swatch-gallery"
+          style={{
+            gridTemplateColumns: `repeat(${images.length}, minmax(0, 1fr))`
+          }}
+        >
+          {images.map((image) => (
+            <div className="dna-id-swatch" key={image.imageHash}>
+              <Image
+                src={image.dataUrl}
+                alt={image.name || "上传的面料图样"}
+                fill
+                unoptimized
+                sizes="(max-width: 768px) 100vw, 760px"
+                style={{ objectFit: "cover" }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="dna-id-header">
         <div className="dna-id-titles">
           <span className="dna-id-title">FABRIC DNA</span>
           <span className="dna-id-subtitle">织物身份证</span>
         </div>
-        <span className="dna-id-provider">{aiProvider}</span>
+        <Image
+          src="/brand/bunana_logo_lockup.png"
+          alt="布拿拿 Bunana"
+          width={235}
+          height={75}
+          style={{
+            display: "block",
+            width: "auto",
+            height: "clamp(18px, 5vw, 24px)",
+            maxWidth: "150px",
+            flexShrink: 1,
+            objectFit: "contain",
+            objectPosition: "right center"
+          }}
+        />
       </div>
 
       {/* ── Identity Band ── */}
@@ -91,32 +102,6 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
             {STATUS_LABELS[useField.status] ?? useField.status}
           </span>
         </div>
-      </div>
-
-      {/* ── Summary ── */}
-      <div className="dna-id-summary">
-        <span className="sum-item">
-          <i className="sum-dot dot-confirmed" />
-          已确认 {confirmedCount}
-        </span>
-        <span className="sum-item">
-          <i className="sum-dot dot-identified" />
-          已识别 {identifiedCount}
-        </span>
-        <span className="sum-item">
-          <i className="sum-dot dot-inferred" />
-          推测 {inferredCount}
-        </span>
-        <span className="sum-item">
-          <i className="sum-dot dot-missing" />
-          缺失 {missingCount}
-        </span>
-        {followUpQuestions && followUpQuestions.length > 0 && (
-          <span className="sum-item">
-            <i className="sum-dot dot-pending" />
-            待追问 {followUpQuestions.length}
-          </span>
-        )}
       </div>
 
       {/* ── Spec Fields Grid ── */}

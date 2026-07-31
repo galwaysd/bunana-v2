@@ -11,6 +11,10 @@ import PublishButton from "./components/PublishButton";
 import { useAnalyze } from "./hooks/useAnalyze";
 import { useFollowUp } from "./hooks/useFollowUp";
 import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
+import {
+  getFabricDNAStats,
+  isFabricDNAQuestionnaireComplete
+} from "./lib/dna";
 
 type FlowPhase = "idle" | "analyzing" | "followUp" | "done";
 
@@ -73,7 +77,9 @@ export default function Home() {
     if (result) {
       setDna(result.dna);
       setFollowUpQuestions(result.followUpQuestions);
-      setPhase(result.followUpQuestions.length > 0 ? "followUp" : "done");
+      setPhase(
+        isFabricDNAQuestionnaireComplete(result.dna) ? "done" : "followUp"
+      );
     } else {
       setPhase("idle");
     }
@@ -105,9 +111,9 @@ export default function Home() {
         setAnswerHistory((history) => [...history, historyItem]);
         setAnswerToEdit("");
 
-        if (result.followUpQuestions.length === 0) {
-          setPhase("done");
-        }
+        setPhase(
+          isFabricDNAQuestionnaireComplete(result.dna) ? "done" : "followUp"
+        );
       } finally {
         refineActionInFlight.current = false;
       }
@@ -132,6 +138,10 @@ export default function Home() {
     (text.trim().length > 0 || images.length > 0) && !initialLoading;
 
   const isSubmitDisabled = phase === "analyzing" || phase === "followUp";
+  const dnaStats = dna ? getFabricDNAStats(dna) : null;
+  const questionnaireComplete = dna
+    ? isFabricDNAQuestionnaireComplete(dna)
+    : false;
 
   return (
     <div className="workbench-page">
@@ -181,7 +191,7 @@ export default function Home() {
             />
           )}
 
-          {phase === "done" && answerHistory.length > 0 && (
+          {phase === "done" && questionnaireComplete && answerHistory.length > 0 && (
             <div className="followup-complete-actions">
               <span>问答已完成</span>
               <button
@@ -225,6 +235,7 @@ export default function Home() {
               ref={cardRef}
               dna={dna}
               aiProvider={aiProvider}
+              images={images}
               followUpQuestions={followUpQuestions}
             />
           ) : (
@@ -272,10 +283,10 @@ export default function Home() {
           )}
 
           {/* Done */}
-          {phase === "done" && dna && (
+          {phase === "done" && questionnaireComplete && dna && dnaStats && (
             <>
               <div className="done-status">
-                已识别 2 · 已确认 10
+                已确认 {dnaStats.confirmed} · 已识别 {dnaStats.identified} · 推测 {dnaStats.inferred} · 缺失 {dnaStats.missing}
               </div>
               <SavePngButton targetRef={cardRef} />
               <PublishButton

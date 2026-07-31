@@ -330,6 +330,23 @@ input:focus-visible {
   box-shadow: var(--shadow-md);
 }
 
+.dna-id-swatch-gallery {
+  display: grid;
+  height: clamp(140px, 24vw, 220px);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dna-id-swatch {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dna-id-swatch + .dna-id-swatch {
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
+}
+
 /* ----- Header ----- */
 .dna-id-header {
   padding: var(--space-4) var(--space-5);

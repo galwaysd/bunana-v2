@@ -1,4 +1,4 @@
-import type { FabricDNA, FabricField } from "@/app/types";
+import type { FabricDNA, FabricField, FieldStatus } from "@/app/types";
 
 /**
  * 创建空 FabricField
@@ -37,6 +37,69 @@ export const DNA_FIELD_KEYS: (keyof FabricDNA)[] = [
   "width", "coating", "waterproof", "moq", "quantity",
   "destinationMarket", "leadTime", "color", "features"
 ];
+
+export const FABRIC_DNA_CARD_FIELDS: readonly (keyof FabricDNA)[] = [
+  "fabricName",
+  "use",
+  "composition",
+  "weave",
+  "weightGsm",
+  "width",
+  "coating",
+  "waterproof",
+  "moq",
+  "leadTime",
+  "color",
+  "features"
+];
+
+export const FABRIC_DNA_REQUIRED_FIELDS = FABRIC_DNA_CARD_FIELDS;
+
+const EXPLICIT_INPUT_ONLY_FIELDS = new Set<keyof FabricDNA>([
+  "weightGsm",
+  "width",
+  "moq",
+  "quantity",
+  "destinationMarket",
+  "leadTime"
+]);
+
+const RELIABILITY_SENSITIVE_FIELDS = new Set<keyof FabricDNA>([
+  "fabricName",
+  "use",
+  "coating",
+  "waterproof",
+  "features"
+]);
+
+export type FabricDNAStats = Record<FieldStatus, number> & { total: number };
+
+export function getFabricDNAStats(
+  dna: FabricDNA,
+  fields: readonly (keyof FabricDNA)[] = FABRIC_DNA_CARD_FIELDS
+): FabricDNAStats {
+  const stats: FabricDNAStats = {
+    identified: 0,
+    inferred: 0,
+    confirmed: 0,
+    missing: 0,
+    total: fields.length
+  };
+
+  for (const key of fields) stats[dna[key].status] += 1;
+  return stats;
+}
+
+export function isFabricDNAQuestionnaireComplete(dna: FabricDNA): boolean {
+  return FABRIC_DNA_REQUIRED_FIELDS.every((key) => {
+    const field = dna[key];
+    return (
+      field.value.trim().length > 0 &&
+      field.status === "confirmed" &&
+      field.source === "user_input"
+    );
+  });
+}
 
 /**
  * 字段中文标签映射
@@ -106,7 +169,8 @@ export function mergeDnaAnswer(
  */
 export function normalizeDnaStatuses(
   dna: FabricDNA,
-  allowUserConfirmed = true
+  allowUserConfirmed = true,
+  confirmedFields?: ReadonlySet<keyof FabricDNA>
 ): FabricDNA {
   const normalized = { ...dna };
 
@@ -119,17 +183,36 @@ export function normalizeDnaStatuses(
       continue;
     }
 
-    if (allowUserConfirmed && field.source === "user_input") {
+    const userConfirmationAllowed =
+      allowUserConfirmed &&
+      field.source === "user_input" &&
+      (!confirmedFields || confirmedFields.has(key));
+
+    if (userConfirmationAllowed) {
       normalized[key] = { ...field, value, status: "confirmed", confidence: 1 };
       continue;
     }
 
-    if (field.status === "inferred" || field.source === "inference") {
-      normalized[key] = { ...field, value, status: "inferred" };
+    const source = field.source === "user_input" ? "inference" : field.source;
+
+    if (
+      EXPLICIT_INPUT_ONLY_FIELDS.has(key) &&
+      source !== "text_extraction"
+    ) {
+      normalized[key] = createEmptyField();
       continue;
     }
 
-    normalized[key] = { ...field, value, status: "identified" };
+    if (
+      RELIABILITY_SENSITIVE_FIELDS.has(key) &&
+      source !== "text_extraction" &&
+      field.confidence < 0.7
+    ) {
+      normalized[key] = createEmptyField();
+      continue;
+    }
+
+    normalized[key] = { ...field, value, source, status: "inferred" };
   }
 
   return normalized;

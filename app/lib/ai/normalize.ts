@@ -267,14 +267,12 @@ export function buildStructuredFollowUpQuestions(dna: FabricDNA): FollowUpQuesti
   for (const [fieldKey, def] of Object.entries(Q)) {
     const f = dna[fieldKey as keyof FabricDNA];
 
-    // missing → must ask
-    if (f.status === "missing") {
-      questionCandidates.push({ id: `q_${fieldKey}`, ...def });
-      continue;
-    }
+    const isUserConfirmed =
+      f.value.trim().length > 0 &&
+      f.status === "confirmed" &&
+      f.source === "user_input";
 
-    // inferred + low confidence (≤0.6) → ask
-    if (f.status === "inferred" && f.confidence <= 0.6) {
+    if (!isUserConfirmed) {
       questionCandidates.push({ id: `q_${fieldKey}`, ...def });
     }
   }
