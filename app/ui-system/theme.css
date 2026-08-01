@@ -1,0 +1,38 @@
+/* ====================================================================
+   Bunana UI System — Base Theme (scoped under .bunana-ui)
+   ==================================================================== */
+
+.bunana-ui {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--text-primary);
+  background: var(--yellow);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100svh;
+  overflow: clip;
+}
+
+/* Inherit font for form controls */
+.bunana-ui button,
+.bunana-ui input,
+.bunana-ui textarea,
+.bunana-ui select {
+  font: inherit;
+}
+
+/* Focus ring — yellow/white only */
+.bunana-ui a:focus-visible,
+.bunana-ui button:focus-visible,
+.bunana-ui input:focus-visible,
+.bunana-ui textarea:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 4px;
+}
+
+.bunana-ui .bunana-ui a,
+.bunana-ui .bunana-ui button,
+.bunana-ui .bunana-ui label {
+  -webkit-tap-highlight-color: transparent;
+}

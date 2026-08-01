@@ -1,0 +1,239 @@
+/* ====================================================================
+   EditorialSection — scoped under .bunana-ui
+   ==================================================================== */
+
+.bunana-ui .esection {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - 52px);
+  padding: clamp(1.5rem, 2vw, 2rem) 0;
+  scroll-margin-top: 52px;
+  border-bottom: 1px solid var(--border-on-yellow);
+}
+
+/* Variant: hero — minimal frame, full bleed */
+.bunana-ui .esection--hero .esection__frame {
+  border: 0;
+}
+
+/* Variant: workbench — thick white frame on yellow field */
+.bunana-ui .esection--workbench {
+  --_frame-border: 2px solid var(--white);
+  --_frame-bg: var(--yellow);
+}
+
+.bunana-ui .esection--workbench .esection__frame {
+  border: var(--_frame-border);
+  background: var(--_frame-bg);
+}
+
+/* Variant: dna — white canvas on yellow field */
+.bunana-ui .esection--dna {
+  --_text: var(--text-primary);
+  --_text-muted: var(--text-secondary);
+  --_text-aux: var(--text-muted);
+  --_border: var(--border-on-paper);
+  border-bottom-color: var(--border-on-paper);
+}
+
+.bunana-ui .esection--dna .esection__frame {
+  /* The FabricDnaPanel provides its own white canvas; frame is just a layout container */
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: auto;
+}
+
+/* Variant: square — yellow field, no special frame on root */
+.bunana-ui .esection--square {
+  border-bottom: 0;
+}
+
+.bunana-ui .esection--square .esection__frame {
+  border: 0;
+}
+
+/* Surface overrides */
+.bunana-ui .esection--paper {
+  --_frame-bg: var(--white);
+  --_frame-border: 2px solid var(--white);
+}
+
+/* ── fitViewport: force section to fit one browser viewport on desktop ── */
+@media (min-width: 900px) {
+  .bunana-ui .esection--fit-viewport {
+    box-sizing: border-box;
+    height: calc(100svh - 52px);
+    min-height: 0;
+    max-height: none;
+    padding-block: clamp(0.75rem, 1.5vh, 1.25rem);
+    overflow: hidden;
+  }
+
+  .bunana-ui .esection--fit-viewport .esection__head {
+    flex: 0 0 auto;
+    width: min(calc(100% - var(--section-pad-inline)), 80rem);
+    max-width: none;
+    padding-inline: clamp(1.5rem, 3vw, 3rem);
+  }
+
+  .bunana-ui .esection--fit-viewport .esection__frame {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    max-width: 1280px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .bunana-ui .esection--fit-viewport .esection__heading {
+    margin-top: clamp(0.65rem, 1.5vh, 1rem);
+  }
+
+  .bunana-ui .esection--fit-viewport .esection__description {
+    margin-top: clamp(0.45rem, 1vh, 0.75rem);
+  }
+
+  /* Left title shrink ~15% in fit-viewport workbench & dna */
+  .bunana-ui .esection--workbench.esection--fit-viewport .esection__heading .eheading,
+  .bunana-ui .esection--dna.esection--fit-viewport .esection__heading .eheading {
+    transform: scale(0.85);
+    transform-origin: left center;
+  }
+
+  /* Workbench layout: reduced padding in fit-viewport compact */
+  .bunana-ui .esection--workbench.esection--fit-viewport .workbench-layout {
+    box-sizing: border-box;
+    height: 100%;
+    max-height: none;
+    padding: clamp(2rem, 3vw, 2.5rem);
+  }
+
+  /* DNA panel: vertically center content, don't fill full height */
+  .bunana-ui .esection--dna.esection--fit-viewport .dna-panel {
+    box-sizing: border-box;
+    height: 100%;
+    max-height: none;
+    margin: auto 0;
+    padding: clamp(1.25rem, 2.5vh, 2rem);
+    align-self: center;
+  }
+}
+
+.bunana-ui .esection__frame {
+  width: min(calc(100% - var(--section-pad-inline)), 85rem);
+  min-height: calc(100svh - 108px);
+  margin-inline: auto;
+  border: var(--_frame-border, 1px solid var(--border-on-yellow));
+  background: var(--_frame-bg, var(--yellow));
+}
+
+/* Header: eyebrow + heading + description */
+.bunana-ui .esection__head {
+  width: min(calc(100% - var(--section-pad-inline)), 85rem);
+  max-width: none;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+/* Eyebrow */
+.bunana-ui .esection .eyebrow {
+  color: var(--text-on-yellow-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* DNA section: eyebrow on white canvas */
+.bunana-ui .esection--dna .esection .eyebrow {
+  color: var(--text-secondary);
+}
+
+/* Heading wrapper */
+.bunana-ui .esection__heading {
+  margin-top: clamp(2.5rem, 4vh, 3.5rem);
+}
+
+/* Description */
+.bunana-ui .esection__description {
+  max-width: 40em;
+  margin-top: clamp(1.5rem, 3vh, 2rem);
+  color: var(--text-on-yellow-secondary);
+  font-size: var(--fs-body-sm);
+  line-height: 1.7;
+}
+
+/* DNA section: description on white canvas */
+.bunana-ui .esection--dna .esection__description {
+  color: var(--text-secondary);
+}
+
+/* ── Workbench grid layout (input + question side by side) ── */
+.bunana-ui .workbench-layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--column-gap);
+  align-items: stretch;
+  width: 100%;
+  padding: clamp(3rem, 4.5vw, 5rem);
+}
+
+.bunana-ui .workbench-layout > .wpanel {
+  grid-column: 4 / 9;
+}
+
+.bunana-ui .workbench-layout > .qpanel {
+  grid-column: 9 / 13;
+}
+
+/* ── Mobile: restore natural height below 900px ── */
+@media (max-width: 899px) {
+  .bunana-ui .esection--fit-viewport {
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .bunana-ui .esection--fit-viewport .esection__frame,
+  .bunana-ui .esection--fit-viewport .workbench-layout,
+  .bunana-ui .esection--fit-viewport .dna-panel,
+  .bunana-ui .esection--fit-viewport .dna-panel__card {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ── Mobile overrides ── */
+@media (max-width: 1080px) {
+  .bunana-ui .workbench-layout > .wpanel {
+    grid-column: 1 / 5;
+  }
+
+  .bunana-ui .workbench-layout > .qpanel {
+    grid-column: 5 / 13;
+  }
+}
+
+@media (max-width: 759px) {
+  .bunana-ui .workbench-layout {
+    display: block;
+    padding: clamp(1.5rem, 7vw, 2.25rem);
+  }
+
+  .bunana-ui .workbench-layout > .wpanel,
+  .bunana-ui .workbench-layout > .qpanel {
+    width: 100%;
+    margin: 0;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .bunana-ui .workbench-layout > .qpanel {
+    margin-top: clamp(3rem, 12vw, 4rem);
+  }
+}

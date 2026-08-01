@@ -1,0 +1,62 @@
+/* ====================================================================
+   Bunana UI System — Scoped Design Tokens
+   Only applies within .bunana-ui scope to avoid polluting globals.
+   ==================================================================== */
+
+.bunana-ui {
+  /* ===== Core Colors (Yellow field with white wireframes) ===== */
+  --yellow: #f7c900;
+  --white: #ffffff;
+
+  /* Yellow-field text (Hero, Workbench labels on yellow) */
+  --text-on-yellow: #ffffff;
+  --text-on-yellow-secondary: rgba(255, 255, 255, 0.72);
+  --text-on-yellow-muted: rgba(255, 255, 255, 0.38);
+  --border-on-yellow: rgba(255, 255, 255, 0.22);
+
+  /* Paper-field text (Fabric DNA card, Square cards — white surface) */
+  --text-primary: #2b2200;
+  --text-secondary: rgba(43, 34, 0, 0.68);
+  --text-muted: rgba(43, 34, 0, 0.40);
+  --border-on-paper: rgba(43, 34, 0, 0.18);
+
+  /* Yellow accents (only for emphasis, never small-body text) */
+  --accent-yellow: #f7c900;
+  --accent-yellow-muted: rgba(247, 201, 0, 0.6);
+
+  /* Semantic status colors (for dots, stamps) */
+  --status-confirmed: #2d2a24;
+  --status-identified: #5a5240;
+  --status-inferred: #8c8470;
+  --status-missing: #b0a998;
+
+  /* ===== Typography ===== */
+  --font-serif: Didot, "Bodoni 72", "Bodoni MT", "Times New Roman", "Songti SC", serif;
+  --font-sans: Inter, "Helvetica Neue", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+
+  /* Modular type scale (clamped) */
+  --fs-eyebrow: clamp(0.65rem, 0.72vw, 0.75rem);
+  --fs-caption: clamp(0.7rem, 0.8vw, 0.8125rem);
+  --fs-body-sm: clamp(0.8rem, 1.1vw, 0.875rem);
+  --fs-body: clamp(0.85rem, 1.2vw, 0.95rem);
+  --fs-body-lg: clamp(0.95rem, 1.3vw, 1.05rem);
+  --fs-subhead: clamp(1.3rem, 1.9vw, 1.75rem);
+  --fs-h3: clamp(1.8rem, 2.7vw, 2.5rem);
+  --fs-h2: clamp(2.4rem, 3.8vw, 3.6rem);
+  --fs-display: clamp(4.8rem, 7.5vw, 7rem);
+
+  /* ===== Layout ===== */
+  --unit: 0.5rem; /* 8px base unit */
+  --section-pad-inline: clamp(2rem, 4.5vw, 5rem);
+  --column-gap: clamp(2rem, 3.5vw, 3.5rem);
+  --frame-border: 1px solid var(--border-on-yellow);
+  --frame-border-thick: 2px solid var(--white);
+  --card-border: 1px solid var(--border-on-paper);
+  --card-border-thick: 2px solid var(--white);
+
+  /* ===== Radii ===== */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}

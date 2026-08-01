@@ -1,0 +1,206 @@
+/* ====================================================================
+   QuestionPanel — scoped under .bunana-ui
+   The AI follow-up question area on the right side of the workbench.
+   ==================================================================== */
+
+.bunana-ui .qpanel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.bunana-ui .qpanel--compact {
+  max-width: 24rem;
+}
+
+/* Compact: reduced vertical spacing, question title clamp(30px, 3vw, 46px) */
+.bunana-ui .qpanel--compact .qpanel__question {
+  margin-top: clamp(1.5rem, 2.5vh, 2rem);
+  font-size: clamp(1.875rem, 3vw, 2.875rem);
+  line-height: 1.25;
+}
+
+.bunana-ui .qpanel--compact .qpanel__options {
+  margin-top: clamp(0.8rem, 2vh, 1.2rem);
+}
+
+.bunana-ui .qpanel--compact .qpanel__input-row {
+  margin-top: clamp(1.2rem, 2vh, 1.6rem);
+}
+
+.bunana-ui .qpanel--compact .qpanel__progress {
+  margin-top: clamp(0.6rem, 1vh, 0.9rem);
+  padding-top: 0.5rem;
+}
+
+/* Label row: eyebrow + field */
+.bunana-ui .qpanel__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  color: var(--text-on-yellow-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.12em;
+  border-bottom: 1px solid var(--border-on-yellow);
+}
+
+.bunana-ui .qpanel__field {
+  color: var(--text-on-yellow-secondary);
+  font-weight: 600;
+}
+
+/* Question text */
+.bunana-ui .qpanel__question {
+  max-width: 28em;
+  margin-top: clamp(2.5rem, 4vh, 3.5rem);
+  color: var(--text-on-yellow);
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+
+/* Choice buttons */
+.bunana-ui .qpanel__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: clamp(1.5rem, 3vh, 2rem);
+}
+
+.bunana-ui .qpanel__option {
+  padding: 0.4rem 0.85rem;
+  border: 1.5px solid var(--white);
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-body-sm);
+  font-weight: 500;
+  color: var(--text-on-yellow);
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.bunana-ui .qpanel__option:hover {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bunana-ui .qpanel__option--selected {
+  border-color: var(--accent-yellow);
+  color: var(--accent-yellow);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* "不确定" button */
+.bunana-ui .qpanel__uncertain {
+  margin-top: 0.75rem;
+  align-self: flex-start;
+  padding: 0.3rem 0.7rem;
+  border: 1px dashed var(--border-on-yellow);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  color: var(--text-on-yellow-muted);
+  background: transparent;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+}
+
+.bunana-ui .qpanel__uncertain:hover {
+  color: var(--text-on-yellow-secondary);
+  border-color: var(--text-on-yellow-secondary);
+}
+
+/* Input row: text input + submit button */
+.bunana-ui .qpanel__input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: clamp(2rem, 4vh, 3rem);
+  border: 2px solid var(--white);
+  overflow: hidden;
+}
+
+.bunana-ui .qpanel__text-input {
+  min-height: 3.5rem;
+  min-width: 0;
+  padding: 0 1rem;
+  color: var(--text-on-yellow);
+  background: rgba(255, 255, 255, 0.03);
+  border: 0;
+  outline: 0;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body-sm);
+}
+
+.bunana-ui .qpanel__text-input::placeholder {
+  color: var(--text-on-yellow-muted);
+}
+
+.bunana-ui .qpanel__submit {
+  min-width: 7rem;
+  padding-inline: 1rem;
+  color: var(--accent-yellow);
+  background: var(--white);
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.bunana-ui .qpanel__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Progress row */
+.bunana-ui .qpanel__progress {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.8rem;
+  color: var(--text-on-yellow-secondary);
+  border-top: 1px solid var(--border-on-yellow);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+
+/* Completed state */
+.bunana-ui .qpanel--completed .qpanel__question {
+  margin-top: 1rem;
+}
+
+.bunana-ui .qpanel__completed {
+  margin-top: clamp(1rem, 2vh, 1.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-on-yellow-secondary);
+  font-size: var(--fs-body-sm);
+}
+
+.bunana-ui .qpanel__back {
+  border: 0;
+  padding: 0.2rem 0;
+  background: transparent;
+  color: var(--text-on-yellow);
+  font-family: var(--font-serif);
+  font-size: var(--fs-caption);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bunana-ui .qpanel__back:disabled {
+  color: var(--text-on-yellow-muted);
+  cursor: not-allowed;
+}

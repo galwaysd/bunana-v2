@@ -1,0 +1,85 @@
+/* ====================================================================
+   StatusMark — scoped under .bunana-ui
+   ==================================================================== */
+
+.bunana-ui .smark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  letter-spacing: 0.08em;
+}
+
+.bunana-ui .smark--sm .smark__dot {
+  width: 0.65rem;
+  height: 0.65rem;
+}
+
+.bunana-ui .smark--md .smark__dot {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
+.bunana-ui .smark__dot {
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* Confirmed: filled */
+.bunana-ui .smark--confirmed .smark__dot {
+  border: 1px solid var(--white);
+  background: var(--white);
+}
+
+/* Identified: outline, transparent */
+.bunana-ui .smark--identified .smark__dot {
+  border: 1.5px solid var(--white);
+  background: transparent;
+}
+
+/* Inferred: dashed outline, transparent */
+.bunana-ui .smark--inferred .smark__dot {
+  border: 1.5px dashed var(--white);
+  background: transparent;
+}
+
+/* Missing: smaller, dashed muted */
+.bunana-ui .smark--missing .smark__dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1.5px dashed var(--accent-yellow-muted);
+  background: transparent;
+}
+
+/* Label text */
+.bunana-ui .smark__label {
+  white-space: nowrap;
+}
+
+/* ── On white surface (DNA card) ── */
+.bunana-ui .esection--dna .smark,
+.bunana-ui .esection--dna .smark__label {
+  color: var(--text-secondary);
+}
+
+.bunana-ui .esection--dna .smark--confirmed .smark__dot {
+  border: 1px solid var(--accent-yellow);
+  background: var(--accent-yellow);
+}
+
+.bunana-ui .esection--dna .smark--identified .smark__dot {
+  border: 1.5px solid var(--accent-yellow);
+  background: transparent;
+}
+
+.bunana-ui .esection--dna .smark--inferred .smark__dot {
+  border: 1.5px dashed var(--accent-yellow);
+  background: transparent;
+}
+
+.bunana-ui .esection--dna .smark--missing .smark__dot {
+  border: 1.5px dashed var(--text-muted);
+  background: transparent;
+}
