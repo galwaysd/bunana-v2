@@ -29,6 +29,16 @@ import {
 
 export const runtime = "nodejs";
 
+const zhipuModelFallbackCodes = new Set([
+  "1211",
+  "1212",
+  "1220",
+  "1221",
+  "1305",
+  "1308",
+  "1311"
+]);
+
 // ===== POST handler =====
 
 export async function OPTIONS() {
@@ -83,26 +93,22 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
   // 1. Zhipu
   if (hasZhipuApiKey()) {
     const primaryModel = zhipuModel();
-    const fallbackModel = "GLM-4V-Flash";
+    const fallbackModel = "glm-4v-flash";
     const modelsToTry =
       primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
 
-    let lastZhipuCode = "";
-
     for (const model of modelsToTry) {
       try {
-        result = await runZhipuInitial(demandText, images, language);
+        result = await runZhipuInitial(demandText, images, language, model);
         aiProvider = "zhipu";
         break;
       } catch (error: unknown) {
         const zhipuCode = String(
           (error as Record<string, unknown>)?.zhipuCode || ""
         );
-        lastZhipuCode = zhipuCode;
         console.warn(`Zhipu ${model} failed (code=${zhipuCode || "none"}):`, error);
 
-        if (zhipuCode === "1302") break;        // account rate limit → stop
-        if (zhipuCode !== "1305") break;         // non-busy error → stop
+        if (!zhipuModelFallbackCodes.has(zhipuCode)) break;
       }
     }
   }
@@ -170,8 +176,33 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
 
   // Refine chain: zhipu → demo (skip Dify)
   if (hasZhipuApiKey()) {
-    try {
-      const result = await runZhipuRefine(currentDNA, question, answer, answeredLog);
+    const primaryModel = zhipuModel();
+    const fallbackModel = "glm-4v-flash";
+    const modelsToTry =
+      primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
+    let zhipuResult: Awaited<ReturnType<typeof runZhipuRefine>> | null = null;
+
+    for (const model of modelsToTry) {
+      try {
+        zhipuResult = await runZhipuRefine(
+          currentDNA,
+          question,
+          answer,
+          answeredLog,
+          model
+        );
+        break;
+      } catch (error: unknown) {
+        const zhipuCode = String(
+          (error as Record<string, unknown>)?.zhipuCode || ""
+        );
+        console.warn(`Zhipu refine ${model} failed (code=${zhipuCode || "none"}):`, error);
+        if (!zhipuModelFallbackCodes.has(zhipuCode)) break;
+      }
+    }
+
+    if (zhipuResult) {
+      const result = zhipuResult;
       updatedDNA = result.dna;
       followUpQuestions = result.followUpQuestions;
       evidence = {
@@ -182,9 +213,7 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
         followUpQuestions: followUpQuestions.map((q) => q.question)
       };
       aiProvider = "zhipu";
-    } catch (error) {
-      console.warn("Zhipu refine failed:", error);
-      // fall through to demo
+    } else {
       const demoResult = runDemoRefine(currentDNA, question, answer, answeredLog);
       updatedDNA = demoResult.dna;
       followUpQuestions = demoResult.followUpQuestions;

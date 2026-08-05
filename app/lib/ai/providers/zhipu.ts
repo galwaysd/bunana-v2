@@ -9,20 +9,29 @@ import { sanitizeDNA, sanitizeFollowUpQuestions, sanitizeDemandResult, parseMayb
 import { buildInitialPrompt, buildRefinePrompt } from "@/app/lib/prompts";
 import { runDemoInitial, runDemoRefine } from "../demo";
 
-const aiRequestTimeoutMs = 20000;
+const aiRequestTimeoutMs = 45000;
 const maxImages = 3;
 
 // ===== 公共工具 =====
 
 export function hasZhipuApiKey(): boolean {
-  const key = process.env.ZHIPU_API_KEY?.trim();
+  const key = configuredZhipuApiKey();
   return Boolean(
     key && !key.includes("your_") && !key.includes("请把") && !key.includes("粘贴")
   );
 }
 
 export function zhipuModel(): string {
-  return process.env.ZHIPU_MODEL || "GLM-4.6V-Flash";
+  return process.env.ZHIPU_MODEL?.trim() || "glm-4v-flash";
+}
+
+function configuredZhipuApiKey(): string {
+  return process.env.ZHIPU_API_KEY?.trim() || "";
+}
+
+function toZhipuImageUrl(value: string): string {
+  const dataUrlMatch = value.match(/^data:image\/[a-zA-Z0-9.+-]+;base64,([\s\S]+)$/);
+  return dataUrlMatch?.[1] || value;
 }
 
 export function zhipuApiUrl(): string {
@@ -62,7 +71,8 @@ export async function fetchWithTimeout(
 export async function runZhipuInitial(
   text: string,
   images: ImagePayload[],
-  language: string
+  language: string,
+  model = zhipuModel()
 ): Promise<DemandResult> {
   const { systemPrompt, userPrompt } = buildInitialPrompt(
     text,
@@ -71,17 +81,22 @@ export async function runZhipuInitial(
 
   const imageParts = images.slice(0, maxImages).map((image) => ({
     type: "image_url" as const,
-    image_url: { url: image.dataUrl }
+    image_url: { url: toZhipuImageUrl(image.dataUrl) }
   }));
 
   const response = await callZhipuAPI(systemPrompt, [
     { type: "text", text: userPrompt },
     ...imageParts
-  ]);
+  ], model);
 
-  const content = extractChatContent(response);
+  const content = extractChatContent(response).trim();
+  const parsed = parseMaybeJson(content);
+  if (!content || !parsed.dna || typeof parsed.dna !== "object") {
+    throw new Error(`Zhipu GLM(${model}) returned invalid Fabric DNA JSON.`);
+  }
+
   return ensureUsableResult(
-    sanitizeDemandResult(parseMaybeJson(content)),
+    sanitizeDemandResult(parsed),
     runDemoInitial(text, images, language)
   );
 }
@@ -92,7 +107,8 @@ export async function runZhipuRefine(
   currentDNA: FabricDNA,
   question: FollowUpQuestion,
   answer: string,
-  answeredLog: Record<string, string>
+  answeredLog: Record<string, string>,
+  model = zhipuModel()
 ): Promise<{ dna: FabricDNA; followUpQuestions: FollowUpQuestion[] }> {
   const { systemPrompt, userPrompt } = buildRefinePrompt(
     JSON.stringify(currentDNA, null, 2),
@@ -103,7 +119,7 @@ export async function runZhipuRefine(
 
   const response = await callZhipuAPI(systemPrompt, [
     { type: "text", text: userPrompt }
-  ]);
+  ], model);
 
   const content = extractChatContent(response);
   const parsed = parseMaybeJson(content);
@@ -125,13 +141,18 @@ export async function runZhipuRefine(
 
 async function callZhipuAPI(
   systemPrompt: string,
-  userContent: Array<{ type: string; text?: string; image_url?: { url: string } }>
+  userContent: Array<{ type: string; text?: string; image_url?: { url: string } }>,
+  model = zhipuModel()
 ): Promise<unknown> {
-  const model = zhipuModel();
+  const apiKey = configuredZhipuApiKey();
+  if (!apiKey) {
+    throw new Error("ZHIPU_API_KEY is missing.");
+  }
+
   const response = await fetchWithTimeout(zhipuApiUrl(), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.ZHIPU_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
