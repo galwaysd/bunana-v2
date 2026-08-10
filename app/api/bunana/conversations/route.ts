@@ -1,9 +1,9 @@
 /**
  * POST /api/bunana/conversations — 初始化/获取聊天
- * Body: { requirementId, role: 'buyer' | 'supplier' }
+ * PUT  /api/bunana/conversations — 发送消息
  *
- * 首次以某个 role 进入时，自动创建系统消息。
- * 双方共享同一 conversation（按 requirementId 聚合）。
+ * 安全加固: 需要 x-bunana-api-secret 请求头认证。
+ * 客户端不得伪造 sender=system。
  */
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -12,6 +12,7 @@ import {
   insertMessage,
 } from "@/app/lib/supabase/conversations";
 import { getRequirementById } from "@/app/lib/supabase/requirements";
+import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
 
 /* ---- 生成角色首次系统消息 ---- */
 function buildSystemMessage(
@@ -40,6 +41,16 @@ function buildSystemMessage(
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+
+  // === 安全层: API 密钥认证 ===
+  if (!validateApiSecret(request)) {
+    return NextResponse.json(
+      { success: false, error: "未授权的请求。" },
+      { status: 401, headers: secureCorsHeaders(origin) }
+    );
+  }
+
   try {
     const body = await request.json();
     const requirementId: string = (body.requirementId ?? "").trim();
@@ -48,13 +59,13 @@ export async function POST(request: NextRequest) {
     if (!requirementId || !role) {
       return NextResponse.json(
         { success: false, error: "缺少 requirementId 或 role。" },
-        { status: 400 }
+        { status: 400, headers: secureCorsHeaders(origin) }
       );
     }
     if (role !== "buyer" && role !== "supplier") {
       return NextResponse.json(
         { success: false, error: "role 必须是 buyer 或 supplier。" },
-        { status: 400 }
+        { status: 400, headers: secureCorsHeaders(origin) }
       );
     }
 
@@ -63,7 +74,7 @@ export async function POST(request: NextRequest) {
     if (!requirement) {
       return NextResponse.json(
         { success: false, error: "该需求记录不存在。" },
-        { status: 404 }
+        { status: 404, headers: secureCorsHeaders(origin) }
       );
     }
 
@@ -81,18 +92,31 @@ export async function POST(request: NextRequest) {
       messages = await getMessages(conversation.id);
     }
 
-    return NextResponse.json({ success: true, conversation, messages });
+    return NextResponse.json(
+      { success: true, conversation, messages },
+      { headers: secureCorsHeaders(origin) }
+    );
   } catch (error) {
     console.error("POST /api/bunana/conversations error:", error);
     return NextResponse.json(
       { success: false, error: "初始化聊天失败。" },
-      { status: 500 }
+      { status: 500, headers: secureCorsHeaders(origin) }
     );
   }
 }
 
-/* ---- 发送消息 ---- */
+/* ---- PUT: 发送消息 ---- */
 export async function PUT(request: NextRequest) {
+  const origin = request.headers.get("origin");
+
+  // === 安全层: API 密钥认证 ===
+  if (!validateApiSecret(request)) {
+    return NextResponse.json(
+      { success: false, error: "未授权的请求。" },
+      { status: 401, headers: secureCorsHeaders(origin) }
+    );
+  }
+
   try {
     const body = await request.json();
     const conversationId: string = (body.conversationId ?? "").trim();
@@ -102,31 +126,43 @@ export async function PUT(request: NextRequest) {
     if (!conversationId || !sender || !content) {
       return NextResponse.json(
         { success: false, error: "缺少必要参数。" },
-        { status: 400 }
+        { status: 400, headers: secureCorsHeaders(origin) }
       );
     }
-    if (!["buyer", "supplier", "system"].includes(sender)) {
+
+    if (!["buyer", "supplier"].includes(sender)) {
       return NextResponse.json(
-        { success: false, error: "sender 无效。" },
-        { status: 400 }
+        { success: false, error: "sender 无效，仅支持 buyer 或 supplier。" },
+        { status: 400, headers: secureCorsHeaders(origin) }
+      );
+    }
+
+    // 消息长度限制
+    if (content.length > 5000) {
+      return NextResponse.json(
+        { success: false, error: "消息内容过长，请控制在 5000 字以内。" },
+        { status: 400, headers: secureCorsHeaders(origin) }
       );
     }
 
     const message = await insertMessage(
       conversationId,
-      sender as "buyer" | "supplier" | "system",
+      sender as "buyer" | "supplier",
       content
     );
 
     // 返回完整消息列表
     const messages = await getMessages(conversationId);
 
-    return NextResponse.json({ success: true, message, messages });
+    return NextResponse.json(
+      { success: true, message, messages },
+      { headers: secureCorsHeaders(origin) }
+    );
   } catch (error) {
     console.error("PUT /api/bunana/conversations error:", error);
     return NextResponse.json(
       { success: false, error: "发送消息失败。" },
-      { status: 500 }
+      { status: 500, headers: secureCorsHeaders(origin) }
     );
   }
 }

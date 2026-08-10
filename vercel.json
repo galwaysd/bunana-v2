@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build --no-turbo",
+  "buildCommand": "npm run build",
   "installCommand": "npm ci",
   "framework": "nextjs"
 }

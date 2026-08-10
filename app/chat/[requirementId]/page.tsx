@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
 import type { Conversation, Message } from "@/app/lib/supabase/conversations";
+import { apiGet, apiPost, apiPut } from "@/app/lib/api-client";
 import styles from "../chat.module.css";
 
 type ChatRole = "buyer" | "supplier";
@@ -58,10 +59,9 @@ export default function ChatPage() {
     async function init() {
       try {
         // 加载需求详情
-        const reqResp = await fetch(
+        const reqData = await apiGet<{ success: boolean; requirement: RequirementRow | null; error?: string }>(
           `/api/bunana/requirements?id=${encodeURIComponent(requirementId)}`
         );
-        const reqData = await reqResp.json();
         if (cancelled) return;
         if (!reqData.success || !reqData.requirement) {
           setError("该需求记录不存在。");
@@ -71,12 +71,10 @@ export default function ChatPage() {
         setRequirement(reqData.requirement);
 
         // 初始化聊天
-        const chatResp = await fetch("/api/bunana/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requirementId, role }),
-        });
-        const chatData = await chatResp.json();
+        const chatData = await apiPost<{ success: boolean; conversation?: Conversation; messages?: Message[]; error?: string }>(
+          "/api/bunana/conversations",
+          { requirementId, role }
+        );
         if (cancelled) return;
         if (!chatData.success) {
           setError(chatData.error ?? "初始化聊天失败。");
@@ -111,16 +109,14 @@ export default function ChatPage() {
     setInput("");
 
     try {
-      const resp = await fetch("/api/bunana/conversations", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const data = await apiPut<{ success: boolean; message?: Message; messages?: Message[]; error?: string }>(
+        "/api/bunana/conversations",
+        {
           conversationId: conversation.id,
           sender: role,
           content: text,
-        }),
-      });
-      const data = await resp.json();
+        }
+      );
       if (!data.success) {
         setError(data.error ?? "发送失败。");
         setInput(text); // 恢复输入

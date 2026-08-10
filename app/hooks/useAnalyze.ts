@@ -7,6 +7,7 @@ import type {
   FollowUpQuestion,
   DemandEvidence
 } from "@/app/types";
+import { apiPost } from "@/app/lib/api-client";
 
 export type AnalyzeState = {
   loading: boolean;
@@ -59,17 +60,18 @@ export function useAnalyze() {
       }));
 
       try {
-        const res = await fetch("/api/bunana/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        const data = await apiPost<{
+          success: boolean;
+          error?: string;
+          dna?: FabricDNA | null;
+          followUpQuestions?: FollowUpQuestion[];
+          evidence?: DemandEvidence | null;
+          aiProvider?: string;
+        }>("/api/bunana/analyze", {
           mode: "initial" as const,
           text: text.trim(),
           images
-        })
-      });
-
-        const data = await res.json();
+        });
 
         if (!data.success) {
           setState((prev) => ({

@@ -1,34 +1,55 @@
 /**
- * POST /api/bunana/requirements — 发布需求到广场
- * GET  /api/bunana/requirements — 获取广场列表
+ * POST /api/bunana/requirements — 发布需求到广场（需认证）
+ * GET  /api/bunana/requirements — 获取广场列表（公开）
  *
  * V2 不做登录，所有记录 user_id = null。
- * 仅服务端使用 serviceRoleKey 读写。
+ * 写操作需要 x-bunana-api-secret 认证头。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/supabase/requirements";
 import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
 import type { ImagePayload, FabricDNA } from "@/app/types";
 import { buildSpecsFromDNA } from "@/app/lib/dna";
+import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
 
-// ===== 发布 =====
+// ===== POST: 发布需求（需认证） =====
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+
+  // === 安全层: API 密钥认证 ===
+  if (!validateApiSecret(request)) {
+    return NextResponse.json(
+      { success: false, error: "未授权的请求。" },
+      { status: 401, headers: secureCorsHeaders(origin) }
+    );
+  }
+
   try {
     const body = await request.json();
 
     const text: string = (body.text ?? "").trim();
     if (!text) {
-      return NextResponse.json({ success: false, error: "需求文本不能为空。" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "需求文本不能为空。" }, { status: 400, headers: secureCorsHeaders(origin) });
     }
 
     const dna: FabricDNA | undefined = body.dna;
     if (!dna) {
-      return NextResponse.json({ success: false, error: "缺少 Fabric DNA。" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "缺少 Fabric DNA。" }, { status: 400, headers: secureCorsHeaders(origin) });
     }
 
     const images: ImagePayload[] = Array.isArray(body.images) ? body.images : [];
     const aiProvider: string = body.aiProvider ?? "zhipu";
+
+    // 图片大小校验：单张 base64 不超过 10MB
+    for (let i = 0; i < images.length; i++) {
+      if (images[i].dataUrl && images[i].dataUrl.length > 14_000_000) {
+        return NextResponse.json(
+          { success: false, error: `第 ${i + 1} 张图片过大，请压缩后重试。` },
+          { status: 400, headers: secureCorsHeaders(origin) }
+        );
+      }
+    }
 
     const fabricName = dna.fabricName?.value || "未命名面料";
     const specs = buildSpecsFromDNA(dna);
@@ -58,17 +79,21 @@ export async function POST(request: NextRequest) {
       aiProvider,
     });
 
-    return NextResponse.json({ success: true, requirement }, { status: 201 });
+    return NextResponse.json(
+      { success: true, requirement },
+      { status: 201, headers: secureCorsHeaders(origin) }
+    );
   } catch (error) {
     console.error("POST /api/bunana/requirements error:", error);
     const message = formatPublishError(error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 500, headers: secureCorsHeaders(origin) });
   }
 }
 
-// ===== 广场列表 =====
+// ===== GET: 广场列表（公开） =====
 
 export async function GET(request: NextRequest) {
+  const origin = request.headers.get("origin");
   try {
     /* 按 ID 查询单条记录 */
     const id = request.nextUrl.searchParams.get("id");
@@ -77,19 +102,28 @@ export async function GET(request: NextRequest) {
       if (!requirement) {
         return NextResponse.json(
           { success: false, error: "记录不存在。", requirement: null },
-          { status: 404 }
+          { status: 404, headers: secureCorsHeaders(origin) }
         );
       }
-      return NextResponse.json({ success: true, requirement });
+      return NextResponse.json(
+        { success: true, requirement },
+        { headers: secureCorsHeaders(origin) }
+      );
     }
 
     /* 列表 */
     const requirements = await listRequirements();
-    return NextResponse.json({ success: true, requirements });
+    return NextResponse.json(
+      { success: true, requirements },
+      { headers: secureCorsHeaders(origin) }
+    );
   } catch (error) {
     console.error("GET /api/bunana/requirements error:", error);
     const message = formatPublishError(error, "获取广场列表失败。", true);
-    return NextResponse.json({ success: false, error: message, requirements: [] }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: message, requirements: [] },
+      { status: 500, headers: secureCorsHeaders(origin) }
+    );
   }
 }
 

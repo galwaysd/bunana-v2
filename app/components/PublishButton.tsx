@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import type { FabricDNA, ImagePayload } from "@/app/types";
 import { useRouter } from "next/navigation";
+import { apiPost } from "@/app/lib/api-client";
 
 type Props = {
   dna: FabricDNA;
@@ -23,13 +24,10 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
     setError("");
 
     try {
-      const resp = await fetch("/api/bunana/requirements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, dna, images, aiProvider }),
-      });
-
-      const data = await resp.json();
+      const data = await apiPost<{ success: boolean; error?: string }>(
+        "/api/bunana/requirements",
+        { text, dna, images, aiProvider }
+      );
 
       if (!data.success) {
         setError(data.error ?? "发布失败，请重试。");

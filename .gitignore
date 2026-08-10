@@ -18,3 +18,9 @@ supabase/.temp/
 .test_*.js
 .t*.json
 .t*_resp.json
+
+# E2E test output (may contain sensitive data)
+.e2e-*.json
+.e2e-*.mjs
+
+.vercel

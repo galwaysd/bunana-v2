@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { FabricDNA, FollowUpQuestion } from "@/app/types";
+import { authHeaders } from "@/app/lib/api-client";
 
 export type FollowUpState = {
   submitting: boolean;
@@ -66,7 +67,7 @@ export function useFollowUp() {
         try {
           res = await fetch("/api/bunana/analyze", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authHeaders(),
             body: JSON.stringify({
               mode: "refine",
               currentDNA,

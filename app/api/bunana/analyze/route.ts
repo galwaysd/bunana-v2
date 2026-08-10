@@ -8,7 +8,7 @@
  * Provider 链：zhipu → dify
  * refine 模式跳过 Dify。
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type {
   BunanaAnalyzeRequest,
   AnalyzeResponse,
@@ -25,6 +25,8 @@ import {
   mergeDnaAnswer,
   normalizeDnaStatuses
 } from "@/app/lib/dna";
+import { validateApiSecret, unauthorizedResponse, secureCorsHeaders } from "@/app/lib/auth";
+import { checkRateLimit, getClientIP, rateLimitResponse } from "@/app/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -40,46 +42,73 @@ const zhipuModelFallbackCodes = new Set([
 
 // ===== POST handler =====
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: corsHeaders() });
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new Response(null, { status: 204, headers: secureCorsHeaders(origin) });
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  // === 安全层: API 密钥认证 ===
+  if (!validateApiSecret(request)) {
+    return NextResponse.json(
+      { success: false, error: "未授权的请求。" },
+      { status: 401, headers: secureCorsHeaders(request.headers.get("origin")) }
+    );
+  }
+
+  // === 安全层: 速率限制 (每分钟 5 次) ===
+  const ip = getClientIP(request);
+  const rate = checkRateLimit(`analyze:${ip}`, 5, 60_000);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { success: false, error: `请求过于频繁，请 ${Math.ceil((rate.resetAt - Date.now()) / 1000)} 秒后重试。`, retryAfter: Math.ceil((rate.resetAt - Date.now()) / 1000) },
+      { status: 429, headers: { ...secureCorsHeaders(request.headers.get("origin")), "Retry-After": String(Math.ceil((rate.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   try {
     const body = (await request.json()) as BunanaAnalyzeRequest;
 
     if (body.mode === "initial") {
-      return handleInitial(body);
+      return handleInitial(body, request);
     }
 
     if (body.mode === "refine") {
-      return handleRefine(body);
+      return handleRefine(body, request);
     }
 
-    return json(400, { success: false, error: "mode 必须是 initial 或 refine。" });
+    return json(400, { success: false, error: "mode 必须是 initial 或 refine。" }, request);
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "AI 暂时无法处理该请求。";
-    return json(500, { success: false, error: message });
+    return json(500, { success: false, error: message }, request);
   }
 }
 
 // ===== initial 模式 =====
 
-async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> {
+async function handleInitial(body: BunanaAnalyzeRequest, request: NextRequest): Promise<NextResponse> {
   const text = (body.text ?? "").trim();
   const images = body.images ?? [];
 
   if (!text && images.length === 0) {
-    return json(400, { success: false, error: "请提供文字需求或图片。" });
+    return json(400, { success: false, error: "请提供文字需求或图片。" }, request);
   }
 
   if (text.length > 1200) {
-    return json(400, { success: false, error: "需求内容太长，请控制在 1200 字以内。" });
+    return json(400, { success: false, error: "需求内容太长，请控制在 1200 字以内。" }, request);
   }
 
   if (images.length > 3) {
-    return json(400, { success: false, error: "单次最多上传 3 张图片。" });
+    return json(400, { success: false, error: "单次最多上传 3 张图片。" }, request);
+  }
+
+  // 图片大小校验：单张 base64 不超过 10MB
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    if (img.dataUrl && img.dataUrl.length > 14_000_000) {
+      return json(400, { success: false, error: `第 ${i + 1} 张图片过大，请压缩后重试。` }, request);
+    }
   }
 
   const language = "zh";
@@ -132,7 +161,7 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
 
   if (!result) {
     const message = lastError?.message || "未配置可用的 AI provider，请配置 ZHIPU_API_KEY 或 DIFY_API_KEY。";
-    return json(503, { success: false, error: message });
+    return json(503, { success: false, error: message }, request);
   }
 
   result.dna = normalizeDnaStatuses(result.dna, false, undefined, /* keepInferences */ true);
@@ -150,25 +179,25 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
     summary: result.summary,
     confidence: result.confidence,
     evidence: result.evidence
-  });
+  }, request);
 }
 
 // ===== refine 模式 =====
 
-async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
+async function handleRefine(body: BunanaAnalyzeRequest, request: NextRequest): Promise<NextResponse> {
   const currentDNA = body.currentDNA;
   const question = body.question;
   const answer = (body.answer ?? "").trim();
   const answeredLog = body.answeredLog ?? {};
 
   if (!currentDNA) {
-    return json(400, { success: false, error: "缺少 currentDNA。" });
+    return json(400, { success: false, error: "缺少 currentDNA。" }, request);
   }
   if (!question) {
-    return json(400, { success: false, error: "缺少 question。" });
+    return json(400, { success: false, error: "缺少 question。" }, request);
   }
   if (!answer) {
-    return json(400, { success: false, error: "缺少 answer。" });
+    return json(400, { success: false, error: "缺少 answer。" }, request);
   }
 
   let updatedDNA: FabricDNA;
@@ -180,7 +209,7 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
     return json(503, {
       success: false,
       error: "当前追问补全需要 ZHIPU_API_KEY，请先配置环境变量。"
-    });
+    }, request);
   }
 
   const primaryModel = zhipuModel();
@@ -212,7 +241,7 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
 
   if (!zhipuResult) {
     const message = lastRefineError?.message || "Zhipu refine failed.";
-    return json(502, { success: false, error: message });
+    return json(502, { success: false, error: message }, request);
   }
 
   const result = zhipuResult;
@@ -256,19 +285,11 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
     dna: updatedDNA,
     followUpQuestions,
     evidence
-  });
+  }, request);
 }
 
 // ===== 工具 =====
 
-function corsHeaders(): Record<string, string> {
-  return {
-    "Access-Control-Allow-Origin": process.env.BUNANA_ALLOWED_ORIGIN || "*",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization"
-  };
-}
-
-function json(status: number, body: AnalyzeResponse): NextResponse {
-  return NextResponse.json(body, { status, headers: corsHeaders() });
+function json(status: number, body: AnalyzeResponse, request: NextRequest): NextResponse {
+  return NextResponse.json(body, { status, headers: secureCorsHeaders(request.headers.get("origin")) });
 }
