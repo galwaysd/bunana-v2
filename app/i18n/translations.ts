@@ -83,6 +83,7 @@ const zh: Dict = {
     exportError: "导出 PNG 失败，请重试。",
   },
   dnaCard: {
+    title: "织物DNA",
     subtitle: "织物身份证",
     logoAlt: "布拿拿 Bunana",
     imageAlt: "上传的面料图样",
@@ -212,6 +213,7 @@ const en: Dict = {
     exportError: "PNG export failed, please retry.",
   },
   dnaCard: {
+    title: "FABRIC DNA",
     subtitle: "Fabric Identity Card",
     logoAlt: "Bunana",
     imageAlt: "Uploaded fabric sample",
@@ -341,6 +343,7 @@ const ja: Dict = {
     exportError: "PNG出力に失敗しました。再試行してください。",
   },
   dnaCard: {
+    title: "生地DNA",
     subtitle: "生地アイデンティティカード",
     logoAlt: "Bunana",
     imageAlt: "アップロードされた生地サンプル",
@@ -470,6 +473,7 @@ const ko: Dict = {
     exportError: "PNG 내보내기 실패, 다시 시도해주세요.",
   },
   dnaCard: {
+    title: "원단 DNA",
     subtitle: "원단 아이덴티티 카드",
     logoAlt: "Bunana",
     imageAlt: "업로드된 원단 샘플",

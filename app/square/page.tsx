@@ -258,12 +258,12 @@ export default function SquarePage() {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
-                  <span className={styles.cardDnaBadge}>FABRIC DNA</span>
+                  <span className={styles.cardDnaBadge}>{t("dnaCard.title")}</span>
                 </div>
               ) : (
                 <div className={styles.cardImagePlaceholder}>
                   <span className={styles.cardPlaceholderIcon}>🧵</span>
-                  <span className={styles.cardDnaBadge}>FABRIC DNA</span>
+                  <span className={styles.cardDnaBadge}>{t("dnaCard.title")}</span>
                 </div>
               )}
 

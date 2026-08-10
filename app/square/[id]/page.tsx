@@ -144,7 +144,7 @@ export default function SquareDetailPage() {
             <h1 className={styles.detailName}>
               {item.fabricName || t("squareDetail.unnamedFabric")}
             </h1>
-            <span className={styles.detailDnaBadge}>FABRIC DNA</span>
+            <span className={styles.detailDnaBadge}>{t("dnaCard.title")}</span>
           </div>
 
           {/* Meta: provider + confirmed count */}

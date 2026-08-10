@@ -180,7 +180,7 @@ export default function ChatPage() {
           {t("chat.backToDetail")}
         </Link>
         <div className={styles.chatDnaBar}>
-          <span className={styles.chatDnaBadge}>FABRIC DNA</span>
+          <span className={styles.chatDnaBadge}>{t("dnaCard.title")}</span>
           <h1 className={styles.chatFabricName}>
             {requirement?.fabricName || t("chat.unnamedFabric")}
           </h1>

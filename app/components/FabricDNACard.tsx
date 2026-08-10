@@ -36,6 +36,7 @@ function EditableBandField({
   editable?: boolean;
   onChange?: (key: keyof FabricDNA, value: string) => void;
 }) {
+  const { t } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -116,6 +117,7 @@ function EditableSpecField({
   editable?: boolean;
   onChange?: (key: keyof FabricDNA, value: string) => void;
 }) {
+  const { t } = useI18n();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -248,7 +250,7 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
       {/* ── Header ── */}
       <div className="dna-id-header">
         <div className="dna-id-titles">
-          <span className="dna-id-title">FABRIC DNA</span>
+          <span className="dna-id-title">{t("dnaCard.title")}</span>
           <span className="dna-id-subtitle">{t("dnaCard.subtitle")}</span>
         </div>
         <Image

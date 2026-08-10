@@ -164,7 +164,7 @@ export default function Home() {
             <div className="dna-id-card is-placeholder">
               <div className="dna-id-header">
                 <div className="dna-id-titles">
-                  <span className="dna-id-title">FABRIC DNA</span>
+                  <span className="dna-id-title">{t("dnaCard.title")}</span>
                   <span className="dna-id-subtitle">{t("home.dnaSubtitle")}</span>
                 </div>
                 <span className="dna-id-provider">
