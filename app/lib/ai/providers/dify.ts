@@ -1,17 +1,15 @@
 /**
  * Dify workflow fallback provider
  *
- * V2 B 阶段：仅 initial 模式走 Dify。
- * refine 模式下跳过 Dify（zhipu → demo 即可）。
+ * 仅 initial 模式走 Dify。
+ * refine 模式由 Zhipu 负责。
  */
 import type { DemandResult, ImagePayload } from "@/app/types";
 import {
   sanitizeDemandResult,
-  parseDataUrl,
-  ensureUsableResult
+  parseDataUrl
 } from "../normalize";
 import { fetchWithTimeout } from "./zhipu";
-import { runDemoInitial } from "../demo";
 
 const aiRequestTimeoutMs = 20000;
 
@@ -68,7 +66,11 @@ export async function runDifyInitial(
       : (outputs as Record<string, unknown>);
 
   const demandResult = sanitizeDemandResult(parsed);
-  return ensureUsableResult(demandResult, runDemoInitial(text, images, language));
+  if (!demandResult.dna.fabricName.value && !demandResult.summary) {
+    throw new Error("Dify returned invalid Fabric DNA JSON.");
+  }
+
+  return demandResult;
 }
 
 // ===== Dify 工具 =====

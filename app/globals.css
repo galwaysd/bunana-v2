@@ -427,70 +427,47 @@ input:focus-visible {
   color: var(--color-text-secondary);
 }
 
-/* ----- Status Stamps (band) ----- */
-.dna-id-stamp {
-  display: inline-block;
-  padding: 1px 7px;
-  font-size: 0.66rem;
-  font-family: var(--font-mono);
-  border-radius: 3px;
-  letter-spacing: 0.02em;
-  flex-shrink: 0;
-  line-height: 1.6;
+.dna-id-band-row.is-editable {
+  cursor: pointer;
 }
 
-.s-confirmed {
-  background: #e3f2fd;
-  border: 1px solid #90caf9;
-  color: #1565c0;
+.dna-id-band-row.is-editable .dna-id-band-value {
+  cursor: text;
+  position: relative;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
 }
-.s-identified {
-  background: #e8f5e9;
-  border: 1px solid #a5d6a7;
-  color: #2e7d32;
+
+.dna-id-band-row.is-editable:hover .dna-id-band-value {
+  background: rgba(255, 255, 255, 0.45);
+  outline: 1px dashed var(--color-border-strong);
 }
-.s-inferred {
-  background: #fff3e0;
-  border: 1px solid #ffcc80;
-  color: #e65100;
-}
-.s-missing {
+
+.dna-id-band-input {
+  flex: 1;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.4;
   background: var(--color-surface);
   border: 1px solid var(--color-border-strong);
-  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  outline: none;
+  min-width: 0;
 }
 
-/* ----- Summary Bar ----- */
-.dna-id-summary {
-  padding: var(--space-2) var(--space-5);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  font-size: 0.76rem;
+.dna-id-band-input:focus {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px rgba(139, 115, 85, 0.15);
+}
+
+.dna-id-band-input.sm {
+  font-size: 1rem;
+  font-weight: 500;
   color: var(--color-text-secondary);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
 }
-
-.sum-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.sum-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.dot-confirmed { background: #2196f3; }
-.dot-identified { background: #4caf50; }
-.dot-inferred  { background: #ff9800; }
-.dot-missing   { background: #c8c2b6; }
-.dot-pending   { background: #ff9800; }
 
 /* ----- Spec Fields Grid ----- */
 .dna-id-fields {
@@ -523,19 +500,52 @@ input:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: inherit;
+  font-family: inherit;
+  text-align: left;
 }
 
-.dna-id-field-value.is-empty {
-  color: var(--color-text-muted);
-  font-weight: 400;
+/* 可编辑的规格字段 */
+.dna-id-field.is-editable {
+  cursor: pointer;
 }
 
-.field-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+.dna-id-field.is-editable .dna-id-field-value {
+  cursor: text;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.dna-id-field.is-editable:hover .dna-id-field-value {
+  background: rgba(139, 115, 85, 0.06);
+  outline: 1px dashed var(--color-border);
+}
+
+.dna-id-field.is-editing {
+  gap: var(--space-1);
+}
+
+.dna-id-field-input {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  outline: none;
+  min-width: 0;
+  font-family: inherit;
+}
+
+.dna-id-field-input:focus {
+  border-color: var(--color-brand-500);
+  box-shadow: 0 0 0 2px rgba(139, 115, 85, 0.15);
 }
 
 /* ----- Placeholder variant (idle / analyzing) ----- */

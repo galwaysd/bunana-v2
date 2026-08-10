@@ -77,6 +77,14 @@ export async function listRequirements(): Promise<RequirementRow[]> {
   return rows.map(mapRequirement);
 }
 
+export async function getRequirementById(id: string): Promise<RequirementRow | null> {
+  const rows = await supabaseSelect<Record<string, unknown>>(
+    `requirements?select=*&id=eq.${encodeURIComponent(id)}&limit=1`
+  );
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return mapRequirement(rows[0]);
+}
+
 function mapRequirement(row: Record<string, unknown>): RequirementRow {
   return {
     id: String(row.id ?? ""),

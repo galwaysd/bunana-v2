@@ -1,34 +1,22 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import ImageUploader from "./components/ImageUploader";
 import TextInput from "./components/TextInput";
 import FabricDNACard from "./components/FabricDNACard";
 import WeavingLoader from "./components/WeavingLoader";
-import FollowUpQuestions from "./components/FollowUpQuestions";
 import SavePngButton from "./components/SavePngButton";
 import PublishButton from "./components/PublishButton";
 import { useAnalyze } from "./hooks/useAnalyze";
-import { useFollowUp } from "./hooks/useFollowUp";
-import type { ImagePayload, FabricDNA, FollowUpQuestion } from "./types";
-import {
-  getFabricDNAStats,
-  isFabricDNAQuestionnaireComplete
-} from "./lib/dna";
+import type { ImagePayload, FabricDNA } from "./types";
+// DNA 存在即可发布 — AI 已填满所有字段
 
-type FlowPhase = "idle" | "analyzing" | "followUp" | "done";
-
-type AnswerHistoryItem = {
-  dnaBefore: FabricDNA;
-  questionsBefore: FollowUpQuestion[];
-  answeredLogBefore: Record<string, string>;
-  answer: string;
-};
+type FlowPhase = "idle" | "analyzing" | "done";
 
 function channelState(phase: FlowPhase): string {
   const base = "weaving-channel";
   if (phase === "done") return `${base} complete`;
-  if (phase === "analyzing" || phase === "followUp") return `${base} active`;
+  if (phase === "analyzing") return `${base} active`;
   return base;
 }
 
@@ -36,19 +24,24 @@ export default function Home() {
   const [images, setImages] = useState<ImagePayload[]>([]);
   const [text, setText] = useState("");
 
-  // ----- Local DNA state (single source of truth) -----
+  /* 从广场详情页「我需要这个面料」跳转来的预填文本 */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prefill = params.get("text");
+    if (prefill) {
+      setText(decodeURIComponent(prefill));
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
+  // ----- DNA state -----
   const [dna, setDna] = useState<FabricDNA | null>(null);
-  const [followUpQuestions, setFollowUpQuestions] = useState<FollowUpQuestion[]>([]);
-  const [answeredLog, setAnsweredLog] = useState<Record<string, string>>({});
-  const [answerHistory, setAnswerHistory] = useState<AnswerHistoryItem[]>([]);
-  const [answerToEdit, setAnswerToEdit] = useState("");
   const [phase, setPhase] = useState<FlowPhase>("idle");
 
   // ----- Card ref (for PNG export) -----
   const cardRef = useRef<HTMLDivElement>(null);
-  const refineActionInFlight = useRef(false);
 
-  // ----- Hooks -----
+  // ----- Hook -----
   const {
     loading: initialLoading,
     error: initialError,
@@ -56,92 +49,34 @@ export default function Home() {
     analyze
   } = useAnalyze();
 
-  const {
-    submitting: refineSubmitting,
-    error: refineError,
-    refine,
-    clearError: clearFollowUpError
-  } = useFollowUp();
-
   // ----- Initial analyze -----
   const handleInitialAnalyze = useCallback(async () => {
     setPhase("analyzing");
     setDna(null);
-    setFollowUpQuestions([]);
-    setAnsweredLog({});
-    setAnswerHistory([]);
-    setAnswerToEdit("");
 
     const result = await analyze(text, images);
 
     if (result) {
       setDna(result.dna);
-      setFollowUpQuestions(result.followUpQuestions);
-      setPhase(
-        isFabricDNAQuestionnaireComplete(result.dna) ? "done" : "followUp"
-      );
+      setPhase("done");
     } else {
       setPhase("idle");
     }
   }, [text, images, analyze]);
 
-  // ----- Refine (answer follow-up) -----
-  const handleRefineAnswer = useCallback(
-    async (answer: string) => {
-      if (!dna || followUpQuestions.length === 0 || refineActionInFlight.current) return;
-      refineActionInFlight.current = true;
-
-      const question = followUpQuestions[0];
-      const historyItem: AnswerHistoryItem = {
-        dnaBefore: dna,
-        questionsBefore: followUpQuestions,
-        answeredLogBefore: answeredLog,
-        answer
-      };
-      clearFollowUpError();
-
-      try {
-        const result = await refine(dna, question, answer, answeredLog);
-
-        if (!result) return; // error: DNA + question preserved
-
-        setDna(result.dna);
-        setAnsweredLog(result.answeredLog);
-        setFollowUpQuestions(result.followUpQuestions);
-        setAnswerHistory((history) => [...history, historyItem]);
-        setAnswerToEdit("");
-
-        setPhase(
-          isFabricDNAQuestionnaireComplete(result.dna) ? "done" : "followUp"
-        );
-      } finally {
-        refineActionInFlight.current = false;
-      }
+  // ----- Manual edit from the card -----
+  const handleDnaChange = useCallback(
+    (nextDna: FabricDNA) => {
+      setDna(nextDna);
+      setPhase("done");
     },
-    [dna, followUpQuestions, answeredLog, refine, clearFollowUpError]
+    []
   );
-
-  const handleBackQuestion = useCallback(() => {
-    const previous = answerHistory[answerHistory.length - 1];
-    if (!previous || refineSubmitting) return;
-
-    clearFollowUpError();
-    setDna(previous.dnaBefore);
-    setFollowUpQuestions(previous.questionsBefore);
-    setAnsweredLog(previous.answeredLogBefore);
-    setAnswerHistory((history) => history.slice(0, -1));
-    setAnswerToEdit(previous.answer);
-    setPhase("followUp");
-  }, [answerHistory, refineSubmitting, clearFollowUpError]);
 
   const canAnalyze =
     (text.trim().length > 0 || images.length > 0) && !initialLoading;
 
-  const isSubmitDisabled = phase === "analyzing" || phase === "followUp";
-  const dnaStats = dna ? getFabricDNAStats(dna) : null;
-  const questionnaireComplete = dna
-    ? isFabricDNAQuestionnaireComplete(dna)
-    : false;
+  const isSubmitDisabled = phase === "analyzing";
 
   return (
     <div className="workbench-page">
@@ -163,8 +98,8 @@ export default function Home() {
             disabled={isSubmitDisabled}
           />
 
-          {/* Analyze button —— idle 状态：图片或文字有其一即可用 */}
-          {phase !== "followUp" && phase !== "done" && (
+          {/* Analyze button */}
+          {phase !== "done" && (
             <button
               type="button"
               onClick={handleInitialAnalyze}
@@ -175,33 +110,17 @@ export default function Home() {
             </button>
           )}
 
-          {/* Follow-up questions stay with the input workbench. */}
-          {phase === "followUp" && dna && followUpQuestions.length > 0 && (
-            <FollowUpQuestions
-              key={followUpQuestions[0].id}
-              question={followUpQuestions[0]}
-              questionIndex={answerHistory.length}
-              totalCount={answerHistory.length + followUpQuestions.length}
-              submitting={refineSubmitting}
-              error={refineError}
-              initialAnswer={answerToEdit}
-              canGoBack={answerHistory.length > 0}
-              onBack={handleBackQuestion}
-              onSubmit={handleRefineAnswer}
-            />
-          )}
-
-          {phase === "done" && questionnaireComplete && answerHistory.length > 0 && (
-            <div className="followup-complete-actions">
-              <span>问答已完成</span>
-              <button
-                type="button"
-                className="followup-back-button"
-                onClick={handleBackQuestion}
-              >
-                ← 返回上一题
-              </button>
-            </div>
+          {/* Re-analyze button when done */}
+          {phase === "done" && (
+            <button
+              type="button"
+              onClick={handleInitialAnalyze}
+              disabled={!canAnalyze}
+              className="btn-weave"
+              style={{ opacity: 0.85 }}
+            >
+              重新分析
+            </button>
           )}
         </aside>
 
@@ -236,7 +155,7 @@ export default function Home() {
               dna={dna}
               aiProvider={aiProvider}
               images={images}
-              followUpQuestions={followUpQuestions}
+              onDnaChange={handleDnaChange}
             />
           ) : (
             /* DNA 身份证占位（idle / analyzing 时显示） */
@@ -274,8 +193,7 @@ export default function Home() {
                 ].map((label) => (
                   <div className="dna-id-field" key={label}>
                     <span className="dna-id-field-label">{label}</span>
-                    <span className="dna-id-field-value is-empty">—</span>
-                    <span className="field-dot dot-missing" />
+                    <span className="dna-id-field-value">—</span>
                   </div>
                 ))}
               </div>
@@ -283,11 +201,8 @@ export default function Home() {
           )}
 
           {/* Done */}
-          {phase === "done" && questionnaireComplete && dna && dnaStats && (
+          {phase === "done" && dna && (
             <>
-              <div className="done-status">
-                已确认 {dnaStats.confirmed} · 已识别 {dnaStats.identified} · 推测 {dnaStats.inferred} · 缺失 {dnaStats.missing}
-              </div>
               <SavePngButton targetRef={cardRef} />
               <PublishButton
                 dna={dna}
@@ -303,7 +218,7 @@ export default function Home() {
 
       {/* ======== Bottom: Shuttle Track ======== */}
       <div className="shuttle-track">
-        <span className="shuttle-track-label">梭子追问轨道</span>
+        <span className="shuttle-track-label">AI 自动整理中</span>
         <div className="shuttle-track-line" />
       </div>
     </div>

@@ -82,7 +82,7 @@ export type BunanaAnalyzeRequest = {
 export type AnalyzeResponse = {
   success: boolean;
   error?: string;
-  aiProvider?: "zhipu" | "dify" | "demo";
+  aiProvider?: "zhipu" | "dify";
   dna?: FabricDNA;
   demandCard?: DemandCard;
   followUpQuestions?: FollowUpQuestion[];

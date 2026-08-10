@@ -24,12 +24,23 @@ type RefineResponsePayload = {
 function isFabricDNA(value: unknown): value is FabricDNA {
   if (!value || typeof value !== "object") return false;
   const dna = value as Partial<FabricDNA>;
-  return Boolean(
-    dna.fabricName &&
-    typeof dna.fabricName.value === "string" &&
-    dna.use &&
-    typeof dna.use.value === "string"
-  );
+  // 校验结构：包含全部 14 个字段 key，不再要求 fabricName/use 必须有值
+  const requiredKeys: (keyof FabricDNA)[] = [
+    "fabricName", "use", "composition", "weave", "weightGsm",
+    "width", "coating", "waterproof", "moq", "quantity",
+    "destinationMarket", "leadTime", "color", "features"
+  ];
+  return requiredKeys.every((key) => {
+    const field = dna[key];
+    return (
+      field != null &&
+      typeof field === "object" &&
+      typeof field.value === "string" &&
+      typeof field.status === "string" &&
+      typeof field.confidence === "number" &&
+      typeof field.source === "string"
+    );
+  });
 }
 
 export function useFollowUp() {

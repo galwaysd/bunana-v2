@@ -5,7 +5,7 @@
  * - initial: 首次分析（文字 + 图片 → FabricDNA + 追问）
  * - refine:  追问回答后更新 DNA
  *
- * Provider 链：zhipu → dify → demo
+ * Provider 链：zhipu → dify
  * refine 模式跳过 Dify。
  */
 import { NextResponse } from "next/server";
@@ -19,7 +19,6 @@ import type {
 } from "@/app/types";
 import { runZhipuInitial, runZhipuRefine, hasZhipuApiKey, zhipuModel } from "@/app/lib/ai/providers/zhipu";
 import { runDifyInitial, hasDifyApiKey } from "@/app/lib/ai/providers/dify";
-import { runDemoInitial, runDemoRefine } from "@/app/lib/ai/demo";
 import { buildStructuredFollowUpQuestions, filterAnsweredQuestions } from "@/app/lib/ai/normalize";
 import {
   DNA_FIELD_KEYS,
@@ -86,9 +85,10 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
   const language = "zh";
   const demandText = text || "仅上传图片";
 
-  // Provider chain: zhipu → dify → demo
+  // Provider chain: zhipu → dify
   let result: DemandResult | null = null;
-  let aiProvider: "zhipu" | "dify" | "demo" = "demo";
+  let aiProvider: "zhipu" | "dify" = "dify";
+  let lastError: Error | null = null;
 
   // 1. Zhipu
   if (hasZhipuApiKey()) {
@@ -106,6 +106,7 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
         const zhipuCode = String(
           (error as Record<string, unknown>)?.zhipuCode || ""
         );
+        lastError = error instanceof Error ? error : new Error(String(error));
         console.warn(`Zhipu ${model} failed (code=${zhipuCode || "none"}):`, error);
 
         if (!zhipuModelFallbackCodes.has(zhipuCode)) break;
@@ -124,18 +125,19 @@ async function handleInitial(body: BunanaAnalyzeRequest): Promise<NextResponse> 
       );
       aiProvider = "dify";
     } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
       console.warn("Dify workflow failed:", error);
     }
   }
 
-  // 3. Demo
   if (!result) {
-    result = runDemoInitial(demandText, images, language);
-    aiProvider = "demo";
+    const message = lastError?.message || "未配置可用的 AI provider，请配置 ZHIPU_API_KEY 或 DIFY_API_KEY。";
+    return json(503, { success: false, error: message });
   }
 
-  result.dna = normalizeDnaStatuses(result.dna, false);
-  result.followUpQuestions = buildStructuredFollowUpQuestions(result.dna).slice(0, 4);
+  result.dna = normalizeDnaStatuses(result.dna, false, undefined, /* keepInferences */ true);
+  // 新流程不再生成追问 — 用户直接在卡片上检查编辑
+  result.followUpQuestions = [];
 
   return json(200, {
     success: true,
@@ -172,59 +174,58 @@ async function handleRefine(body: BunanaAnalyzeRequest): Promise<NextResponse> {
   let updatedDNA: FabricDNA;
   let followUpQuestions: FollowUpQuestion[];
   let evidence: DemandEvidence;
-  let aiProvider: "zhipu" | "dify" | "demo" = "demo";
+  let aiProvider: "zhipu" | "dify" = "zhipu";
 
-  // Refine chain: zhipu → demo (skip Dify)
-  if (hasZhipuApiKey()) {
-    const primaryModel = zhipuModel();
-    const fallbackModel = "glm-4v-flash";
-    const modelsToTry =
-      primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
-    let zhipuResult: Awaited<ReturnType<typeof runZhipuRefine>> | null = null;
-
-    for (const model of modelsToTry) {
-      try {
-        zhipuResult = await runZhipuRefine(
-          currentDNA,
-          question,
-          answer,
-          answeredLog,
-          model
-        );
-        break;
-      } catch (error: unknown) {
-        const zhipuCode = String(
-          (error as Record<string, unknown>)?.zhipuCode || ""
-        );
-        console.warn(`Zhipu refine ${model} failed (code=${zhipuCode || "none"}):`, error);
-        if (!zhipuModelFallbackCodes.has(zhipuCode)) break;
-      }
-    }
-
-    if (zhipuResult) {
-      const result = zhipuResult;
-      updatedDNA = result.dna;
-      followUpQuestions = result.followUpQuestions;
-      evidence = {
-        observed: [],
-        inferred: [],
-        confirmed: [`${question.field}: ${answer}`],
-        unknown: [],
-        followUpQuestions: followUpQuestions.map((q) => q.question)
-      };
-      aiProvider = "zhipu";
-    } else {
-      const demoResult = runDemoRefine(currentDNA, question, answer, answeredLog);
-      updatedDNA = demoResult.dna;
-      followUpQuestions = demoResult.followUpQuestions;
-      evidence = demoResult.evidence;
-    }
-  } else {
-    const demoResult = runDemoRefine(currentDNA, question, answer, answeredLog);
-    updatedDNA = demoResult.dna;
-    followUpQuestions = demoResult.followUpQuestions;
-    evidence = demoResult.evidence;
+  if (!hasZhipuApiKey()) {
+    return json(503, {
+      success: false,
+      error: "当前追问补全需要 ZHIPU_API_KEY，请先配置环境变量。"
+    });
   }
+
+  const primaryModel = zhipuModel();
+  const fallbackModel = "glm-4v-flash";
+  const modelsToTry =
+    primaryModel === fallbackModel ? [primaryModel] : [primaryModel, fallbackModel];
+  let zhipuResult: Awaited<ReturnType<typeof runZhipuRefine>> | null = null;
+  let lastRefineError: Error | null = null;
+
+  for (const model of modelsToTry) {
+    try {
+      zhipuResult = await runZhipuRefine(
+        currentDNA,
+        question,
+        answer,
+        answeredLog,
+        model
+      );
+      break;
+    } catch (error: unknown) {
+      const zhipuCode = String(
+        (error as Record<string, unknown>)?.zhipuCode || ""
+      );
+      lastRefineError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`Zhipu refine ${model} failed (code=${zhipuCode || "none"}):`, error);
+      if (!zhipuModelFallbackCodes.has(zhipuCode)) break;
+    }
+  }
+
+  if (!zhipuResult) {
+    const message = lastRefineError?.message || "Zhipu refine failed.";
+    return json(502, { success: false, error: message });
+  }
+
+  const result = zhipuResult;
+  updatedDNA = result.dna;
+  followUpQuestions = result.followUpQuestions;
+  evidence = {
+    observed: [],
+    inferred: [],
+    confirmed: [`${question.field}: ${answer}`],
+    unknown: [],
+    followUpQuestions: followUpQuestions.map((q) => q.question)
+  };
+  aiProvider = "zhipu";
 
   // 更新 answeredLog
   const newAnsweredLog: Record<string, string> = {

@@ -53,7 +53,22 @@ export const FABRIC_DNA_CARD_FIELDS: readonly (keyof FabricDNA)[] = [
   "features"
 ];
 
-export const FABRIC_DNA_REQUIRED_FIELDS = FABRIC_DNA_CARD_FIELDS;
+/**
+ * done 判定只检查 10 个 spec 字段。
+ * fabricName 和 use 由 AI inferred 生成，不参与追问/done。
+ */
+export const FABRIC_DNA_REQUIRED_FIELDS: readonly (keyof FabricDNA)[] = [
+  "composition",
+  "weave",
+  "weightGsm",
+  "width",
+  "coating",
+  "waterproof",
+  "moq",
+  "leadTime",
+  "color",
+  "features"
+];
 
 const EXPLICIT_INPUT_ONLY_FIELDS = new Set<keyof FabricDNA>([
   "weightGsm",
@@ -90,15 +105,16 @@ export function getFabricDNAStats(
   return stats;
 }
 
+/**
+ * 判断 DNA 是否可发布。
+ *
+ * 新流程：AI 自动填满所有字段后，只要 dna 存在即可发布。
+ * 用户手动编辑后字段变为 confirmed，未编辑的 inferred 也视为可接受。
+ */
 export function isFabricDNAQuestionnaireComplete(dna: FabricDNA): boolean {
-  return FABRIC_DNA_REQUIRED_FIELDS.every((key) => {
-    const field = dna[key];
-    return (
-      field.value.trim().length > 0 &&
-      field.status === "confirmed" &&
-      field.source === "user_input"
-    );
-  });
+  // AI 自动填充模式下，只要 DNA 有内容就可以视为 ready to publish
+  const stats = getFabricDNAStats(dna);
+  return stats.identified + stats.inferred + stats.confirmed >= 6;
 }
 
 /**
@@ -120,6 +136,48 @@ export const DNA_FIELD_LABELS: Record<keyof FabricDNA, string> = {
   color: "颜色",
   features: "特性"
 };
+
+/**
+ * 当 AI 未返回某字段值时，用行业通用默认值填充。
+ * 保持字段格式 { value, status: "inferred", confidence: 0.5, source: "inference" }。
+ */
+export function fillDnaDefaults(dna: FabricDNA, text: string = ""): FabricDNA {
+  const normalized = text.toLowerCase();
+  const hasKeyword = (kw: string | string[]) =>
+    Array.isArray(kw) ? kw.some((k) => normalized.includes(k.toLowerCase())) : normalized.includes(kw.toLowerCase());
+
+  const defaults: Record<keyof FabricDNA, string> = {
+    fabricName: "未命名面料",
+    use: "通用服装/用品",
+    composition: hasKeyword(["尼龙", "锦纶"]) ? "尼龙" : hasKeyword(["涤纶", "聚酯"]) ? "涤纶" : "按样",
+    weave: hasKeyword("牛津") ? "牛津" : hasKeyword("平纹") ? "平纹" : "平纹",
+    weightGsm: hasKeyword(["轻薄", "尼丝纺", "涤塔夫"]) ? "约80-100gsm" : hasKeyword("牛津") ? "约200gsm" : "约150gsm",
+    width: "约150cm",
+    coating: hasKeyword(["防水", "防泼水", "涂层"]) ? "PU涂层" : "无",
+    waterproof: hasKeyword(["防水", "防泼水"]) ? "防泼水" : "无",
+    moq: "1000米起",
+    quantity: "待定",
+    destinationMarket: "待定",
+    leadTime: "15-20天",
+    color: "按图片",
+    features: hasKeyword(["户外", "运动", "背包"]) ? "耐磨、户外适用" : "通用面料"
+  };
+
+  const next: FabricDNA = { ...dna };
+  for (const key of DNA_FIELD_KEYS) {
+    const field = dna[key];
+    const value = field.value.trim();
+    if (!value || value === "—" || value === "待确认" || value === "需确认") {
+      next[key] = {
+        value: defaults[key],
+        status: "inferred",
+        confidence: 0.5,
+        source: "inference"
+      };
+    }
+  }
+  return next;
+}
 
 /**
  * DNA → specs 字符串（克重/成分/织法/幅宽等）
@@ -164,13 +222,17 @@ export function mergeDnaAnswer(
 }
 
 /**
- * 统一字段状态语义：空值必须 missing；initial 阶段不允许 confirmed；
- * 非用户来源的 confirmed 按来源降级为 identified / inferred。
+ * 统一字段状态语义。
+ *
+ * keepInferences=true：新流程用，保留所有 AI 推断值，
+ *   仅把显式空的字段设为 missing，其余保留 inferred/identified。
+ * keepInferences=false：旧流程用，严格清除不可靠字段。
  */
 export function normalizeDnaStatuses(
   dna: FabricDNA,
   allowUserConfirmed = true,
-  confirmedFields?: ReadonlySet<keyof FabricDNA>
+  confirmedFields?: ReadonlySet<keyof FabricDNA>,
+  keepInferences = false
 ): FabricDNA {
   const normalized = { ...dna };
 
@@ -178,7 +240,7 @@ export function normalizeDnaStatuses(
     const field = dna[key];
     const value = field.value.trim();
 
-    if (!value) {
+    if (!value && !keepInferences) {
       normalized[key] = createEmptyField();
       continue;
     }
@@ -190,6 +252,12 @@ export function normalizeDnaStatuses(
 
     if (userConfirmationAllowed) {
       normalized[key] = { ...field, value, status: "confirmed", confidence: 1 };
+      continue;
+    }
+
+    if (keepInferences) {
+      // 新流程：保留所有 AI 推断值，不回退
+      normalized[key] = { ...field, value, status: field.value ? "inferred" : "missing" };
       continue;
     }
 

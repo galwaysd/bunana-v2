@@ -1,6 +1,6 @@
 /**
- * AI 响应标准化 —— 将智谱/Dify/demo 各 provider 的原始输出
- * 统一转换为标准 FabricDNA + FollowUpQuestion[] + DemandEvidence 格式。
+ * AI 响应标准化 —— 将智谱/Dify 的原始输出统一转换为标准
+ * FabricDNA + FollowUpQuestion[] + DemandEvidence 格式。
  */
 import type {
   FabricDNA,
@@ -41,18 +41,36 @@ export function numberValue(value: unknown, fallback: number): number {
 }
 
 export function parseMaybeJson(value: string): Record<string, unknown> {
+  const normalized = value.trim();
+  if (!normalized) return {};
+
   try {
-    return JSON.parse(value);
+    return JSON.parse(normalized);
   } catch {
-    const match =
-      value.match(/```(?:json)?\s*([\s\S]*?)\s*```/) ||
-      value.match(/(\{[\s\S]*\})/);
-    if (!match?.[1]) return {};
-    try {
-      return JSON.parse(match[1]);
-    } catch {
-      return {};
+    const fenced = normalized.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced?.[1]) {
+      try {
+        return JSON.parse(fenced[1]);
+      } catch {
+        // fall through
+      }
     }
+
+    const objectMatch = normalized.match(/(\{[\s\S]*\})/);
+    if (objectMatch?.[1]) {
+      try {
+        return JSON.parse(objectMatch[1]);
+      } catch {
+        // fall through
+      }
+    }
+
+    const keyValueMatch = normalized.match(/"([^"]+)"\s*:\s*"([^"]*)"/);
+    if (keyValueMatch) {
+      return { [keyValueMatch[1]]: keyValueMatch[2] };
+    }
+
+    return {};
   }
 }
 
@@ -78,14 +96,16 @@ function isValidFieldSource(v: unknown): v is FieldSource {
   return v === "image_analysis" || v === "text_extraction" || v === "inference" || v === "user_input";
 }
 
-export function sanitizeDNA(value: unknown): FabricDNA {
+export function sanitizeDNA(value: unknown, keepInferences = false): FabricDNA {
   const dna = createEmptyDNA();
   if (!value || typeof value !== "object") return dna;
 
   const source = value as Record<string, unknown>;
   for (const field of DNA_FIELD_KEYS) {
     const raw = source[field];
-    if (raw && typeof raw === "object") {
+    if (raw == null) continue;
+
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
       const f = raw as Record<string, unknown>;
       dna[field] = {
         value: f.value != null ? String(f.value) : "",
@@ -96,9 +116,23 @@ export function sanitizeDNA(value: unknown): FabricDNA {
             : 0,
         source: isValidFieldSource(f.source) ? (f.source as FieldSource) : "inference"
       };
+      continue;
+    }
+
+    const textValue = typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean"
+      ? String(raw).trim()
+      : "";
+
+    if (textValue) {
+      dna[field] = {
+        value: textValue,
+        status: "inferred",
+        confidence: 0.7,
+        source: "inference"
+      };
     }
   }
-  return normalizeDnaStatuses(dna);
+  return normalizeDnaStatuses(dna, false, undefined, keepInferences);
 }
 
 // ===== FollowUpQuestions 标准化 =====
@@ -179,148 +213,11 @@ export function sanitizeDemandResult(value: unknown): DemandResult {
 }
 
 // ===== 追问问题构建 =====
-
-export function buildStructuredFollowUpQuestions(dna: FabricDNA): FollowUpQuestion[] {
-  const questionCandidates: Array<{
-    id: string;
-    field: keyof FabricDNA;
-    question: string;
-    options: string[];
-    priority: number;
-  }> = [];
-
-  const Q: Record<string, { field: keyof FabricDNA; question: string; options: string[]; priority: number }> = {
-    fabricName: {
-      field: "fabricName",
-      question: "这块面料的名称或常用叫法是什么？",
-      options: ["牛津布", "春亚纺", "涤塔夫", "不确定"],
-      priority: 1
-    },
-    use: {
-      field: "use",
-      question: "这块面料最终用于什么产品或场景？",
-      options: ["服装", "箱包", "帐篷", "家纺"],
-      priority: 2
-    },
-    weightGsm: {
-      field: "weightGsm",
-      question: "克重大概在什么范围？",
-      options: ["60-80gsm", "100-120gsm", "150gsm+", "不确定"],
-      priority: 3
-    },
-    width: {
-      field: "width",
-      question: "幅宽需要多少？",
-      options: ["150cm", "180cm", "210cm+", "不确定"],
-      priority: 4
-    },
-    coating: {
-      field: "coating",
-      question: "需要什么涂层处理？",
-      options: ["PU涂层", "PA涂层", "PVC涂层", "不需要涂层"],
-      priority: 5
-    },
-    moq: {
-      field: "moq",
-      question: "最小起订量是多少？",
-      options: ["1000米", "3000米", "5000米", "面议"],
-      priority: 6
-    },
-    composition: {
-      field: "composition",
-      question: "面料成分是什么？",
-      options: ["涤纶", "尼龙", "棉涤混纺", "不确定"],
-      priority: 7
-    },
-    weave: {
-      field: "weave",
-      question: "需要什么织法？",
-      options: ["平纹", "斜纹", "牛津", "缎纹"],
-      priority: 8
-    },
-    waterproof: {
-      field: "waterproof",
-      question: "防水等级有具体要求吗？",
-      options: ["普通防泼水", "PU800", "PU1500+", "不需要防水"],
-      priority: 9
-    },
-    leadTime: {
-      field: "leadTime",
-      question: "交期有什么要求？",
-      options: ["现货", "7天内", "15天内", "30天内"],
-      priority: 10
-    },
-    color: {
-      field: "color",
-      question: "颜色有什么偏好？",
-      options: ["黑色", "藏青", "军绿", "卡其"],
-      priority: 11
-    },
-    features: {
-      field: "features",
-      question: "需要任何特殊工艺或特性吗？",
-      options: ["阻燃", "抗UV", "防静电", "不需要"],
-      priority: 12
-    }
-  };
-
-  for (const [fieldKey, def] of Object.entries(Q)) {
-    const f = dna[fieldKey as keyof FabricDNA];
-
-    const isUserConfirmed =
-      f.value.trim().length > 0 &&
-      f.status === "confirmed" &&
-      f.source === "user_input";
-
-    if (!isUserConfirmed) {
-      questionCandidates.push({ id: `q_${fieldKey}`, ...def });
-    }
-  }
-
-  questionCandidates.sort((a, b) => a.priority - b.priority);
-  return questionCandidates;
-}
-
-// ===== ensureUsableResult —— 兜底保证结果可用 =====
-
-export function ensureUsableResult(
-  result: DemandResult,
-  fallback: DemandResult
-): DemandResult {
-  const demandCard: DemandCard = {
-    fabricName: result.demandCard.fabricName || fallback.demandCard.fabricName,
-    use: result.demandCard.use || fallback.demandCard.use,
-    specs: result.demandCard.specs || fallback.demandCard.specs,
-    quantity: result.demandCard.quantity || fallback.demandCard.quantity,
-    destinationMarket:
-      result.demandCard.destinationMarket || fallback.demandCard.destinationMarket,
-    urgency: result.demandCard.urgency || fallback.demandCard.urgency,
-    notes: result.demandCard.notes || fallback.demandCard.notes
-  };
-
-  const safe: DemandResult = {
-    category: result.category && result.category !== "其他面料"
-      ? result.category
-      : fallback.category,
-    dna: mergeDNA(result.dna, fallback.dna),
-    demandCard,
-    missingFields:
-      result.missingFields.length > 0 ? result.missingFields : fallback.missingFields,
-    keywords: result.keywords.length > 0 ? result.keywords : fallback.keywords,
-    summary: result.summary || fallback.summary,
-    confidence: result.confidence || fallback.confidence,
-    evidence: mergeEvidence(result.evidence, fallback.evidence),
-    followUpQuestions:
-      result.followUpQuestions.length > 0
-        ? result.followUpQuestions
-        : fallback.followUpQuestions
-  };
-
-  // Always regenerate structured followUpQuestions from the final dna (initial only, limit 4)
-  safe.followUpQuestions = buildStructuredFollowUpQuestions(safe.dna).slice(0, 4);
-
-  return safe;
-}
+// 抽离到独立文件以便 client/server 共用
+export {
+  buildStructuredFollowUpQuestions,
+  filterAnsweredQuestions
+} from "@/app/lib/followUp";
 
 function mergeDNA(primary: FabricDNA, fallback: FabricDNA): FabricDNA {
   const merged = createEmptyDNA();
@@ -328,18 +225,4 @@ function mergeDNA(primary: FabricDNA, fallback: FabricDNA): FabricDNA {
     merged[key] = primary[key].value ? primary[key] : fallback[key];
   }
   return normalizeDnaStatuses(merged, false);
-}
-
-// ===== refine 专用的 DNA 合并结果 =====
-
-/**
- * 去重：将新的 followUpQuestions 与已回答记录对比，排除已回答的字段
- */
-export function filterAnsweredQuestions(
-  questions: FollowUpQuestion[],
-  answeredLog: Record<string, string>
-): FollowUpQuestion[] {
-  return questions.filter(
-    (q) => !answeredLog[q.field] && !answeredLog[q.id]
-  );
 }
