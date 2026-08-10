@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
 import type { Conversation, Message } from "@/app/lib/supabase/conversations";
 import { apiGet, apiPost, apiPut } from "@/app/lib/api-client";
+import { parseSpecsValues } from "@/app/lib/dna";
 import { useI18n, LOCALE_TO_DATE } from "@/app/i18n";
 import styles from "../chat.module.css";
 
@@ -13,12 +14,7 @@ type ChatRole = "buyer" | "supplier";
 
 /* ---- 从 specs 解析精简规格 ---- */
 function parseSpecsBrief(specs: string): string[] {
-  if (!specs || specs === "待确认" || specs === "TBD" || specs === "未定" || specs === "미정") return [];
-  return specs
-    .split(/[，,、]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-    .slice(0, 6);
+  return parseSpecsValues(specs).slice(0, 6);
 }
 
 /* ---- 角色标签 ---- */

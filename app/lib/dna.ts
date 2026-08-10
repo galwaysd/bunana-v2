@@ -180,19 +180,46 @@ export function fillDnaDefaults(dna: FabricDNA, text: string = ""): FabricDNA {
 }
 
 /**
- * DNA → specs 字符串（克重/成分/织法/幅宽等）
+ * DNA → specs 字符串（结构化格式：key:value|key:value）
+ * 详情页通过 parseSpecsIntoGrid 解析，用 i18n 翻译每个字段名。
  */
 export function buildSpecsFromDNA(dna: FabricDNA): string {
   const parts: string[] = [];
-  if (dna.weightGsm.value) parts.push(dna.weightGsm.value);
-  if (dna.composition.value) parts.push(dna.composition.value);
-  if (dna.weave.value) parts.push(dna.weave.value);
-  if (dna.width.value) parts.push(`幅宽${dna.width.value}`);
-  if (dna.waterproof.value) parts.push(dna.waterproof.value);
-  if (dna.coating.value) parts.push(`${dna.coating.value}涂层`);
-  if (dna.color.value) parts.push(dna.color.value);
-  if (dna.features.value) parts.push(dna.features.value);
-  return parts.length > 0 ? parts.join("，") : "待确认";
+  if (dna.weightGsm.value) parts.push(`weightGsm:${dna.weightGsm.value}`);
+  if (dna.composition.value) parts.push(`composition:${dna.composition.value}`);
+  if (dna.weave.value) parts.push(`weave:${dna.weave.value}`);
+  if (dna.width.value) parts.push(`width:${dna.width.value}`);
+  if (dna.waterproof.value) parts.push(`waterproof:${dna.waterproof.value}`);
+  if (dna.coating.value) parts.push(`coating:${dna.coating.value}`);
+  if (dna.color.value) parts.push(`color:${dna.color.value}`);
+  if (dna.features.value) parts.push(`features:${dna.features.value}`);
+  return parts.length > 0 ? parts.join("|") : "待确认";
+}
+
+/**
+ * 从 specs 字符串中提取纯值列表（兼容新格式 key:value|key:value 和旧格式 逗号分隔）
+ */
+export function parseSpecsValues(specs: string): string[] {
+  if (!specs || specs === "待确认" || specs === "TBD" || specs === "未定" || specs === "미정") return [];
+
+  // 新格式：key:value|key:value
+  if (specs.includes("|")) {
+    return specs
+      .split("|")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .map((s) => {
+        const colonIdx = s.indexOf(":");
+        return colonIdx > 0 ? s.slice(colonIdx + 1).trim() : s;
+      })
+      .filter((s) => s.length > 0);
+  }
+
+  // 旧格式：逗号分隔
+  return specs
+    .split(/[，,、]/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
 }
 
 /**

@@ -4,27 +4,50 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
+import { parseSpecsValues } from "@/app/lib/dna";
 import { useI18n, LOCALE_TO_DATE } from "@/app/i18n";
 import styles from "../square.module.css";
 
-/* ----- 从 specs 中解析 14 字段规格项 ----- */
-function parseSpecsIntoGrid(specs: string, specLabel: string): { label: string; value: string }[] {
+/* ----- 从 specs 中解析规格项（支持结构化 key:value|key:value 格式 + 旧逗号分隔格式） ----- */
+function parseSpecsIntoGrid(
+  specs: string,
+  specLabel: string,
+  t: (path: string, vars?: Record<string, string | number>) => string
+): { label: string; value: string }[] {
   if (!specs || specs === "待确认" || specs === "TBD" || specs === "未定" || specs === "미정") return [];
+
+  // 新格式：key:value|key:value
+  if (specs.includes("|")) {
+    return specs
+      .split("|")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .map((s) => {
+        const colonIdx = s.indexOf(":");
+        if (colonIdx > 0) {
+          const key = s.slice(0, colonIdx).trim();
+          const value = s.slice(colonIdx + 1).trim();
+          const label = t(`dna.${key}`);
+          return { label: label !== `dna.${key}` ? label : specLabel, value };
+        }
+        return { label: specLabel, value: s };
+      })
+      .filter((item) => item.value.length > 0);
+  }
+
+  // 旧格式：逗号分隔的纯值
   return specs
     .split(/[，,、]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-    .map((s) => ({ label: s.length > 6 ? s.slice(0, 6) : specLabel, value: s }));
+    .map((s) => ({ label: specLabel, value: s }));
 }
 
 function estimateConfirmedCount(item: RequirementRow): number {
   const meaningfulKeywords = item.keywords.filter(
     (kw) => kw !== item.fabricName && kw.length > 0
   );
-  const specParts =
-    item.specs && item.specs !== "待确认"
-      ? item.specs.split(/[，,、]/).filter((s) => s.trim().length > 0)
-      : [];
+  const specParts = parseSpecsValues(item.specs);
   return meaningfulKeywords.length + specParts.length;
 }
 
@@ -97,7 +120,7 @@ export default function SquareDetailPage() {
     );
   }
 
-  const specsGrid = parseSpecsIntoGrid(item.specs, t("squareDetail.specLabel"));
+  const specsGrid = parseSpecsIntoGrid(item.specs, t("squareDetail.specLabel"), t);
   const confirmedCount = estimateConfirmedCount(item);
 
   return (

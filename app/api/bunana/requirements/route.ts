@@ -73,7 +73,18 @@ export async function POST(request: NextRequest) {
       fabricName,
       specs,
       keywords: [...new Set(keywords)].filter(Boolean).slice(0, 10),
-      summary: `Fabric DNA 已构建完成。${dna.composition?.value ? `成分：${dna.composition.value}。` : ""}${specs}`,
+      summary: (() => {
+        const parts = ["Fabric DNA 已构建完成。"];
+        if (dna.composition?.value) parts.push(`成分：${dna.composition.value}。`);
+        if (dna.weightGsm?.value) parts.push(`克重：${dna.weightGsm.value}。`);
+        if (dna.weave?.value) parts.push(`织法：${dna.weave.value}。`);
+        if (dna.width?.value) parts.push(`幅宽：${dna.width.value}。`);
+        if (dna.coating?.value) parts.push(`涂层：${dna.coating.value}。`);
+        if (dna.waterproof?.value) parts.push(`防水：${dna.waterproof.value}。`);
+        if (dna.color?.value) parts.push(`颜色：${dna.color.value}。`);
+        if (dna.features?.value) parts.push(`特性：${dna.features.value}。`);
+        return parts.join("");
+      })(),
       confidence: 0.85,
       imageAssets,
       aiProvider,

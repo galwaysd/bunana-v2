@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
+import { parseSpecsValues } from "@/app/lib/dna";
 import { useI18n } from "@/app/i18n";
 import styles from "./square.module.css";
 
@@ -75,10 +76,7 @@ function extractUseFromKeywords(
 /* ----- 从 specs 中提取核心特性 ----- */
 function extractFeaturesFromSpecs(specs: string): string[] {
   if (!specs || specs === "待确认") return [];
-  // specs 格式: "600D，尼龙，幅宽150cm，PU800，黑色"
-  return specs
-    .split(/[，,、]/)
-    .map((s) => s.trim())
+  return parseSpecsValues(specs)
     .filter((s) => s.length > 0 && s.length <= 12)
     .slice(0, 4);
 }
@@ -90,9 +88,7 @@ function estimateConfirmedCount(item: RequirementRow): number {
     (kw) => kw !== item.fabricName && kw.length > 0
   );
   // specs 中有值的字段
-  const specParts = item.specs && item.specs !== "待确认"
-    ? item.specs.split(/[，,、]/).filter((s) => s.trim().length > 0)
-    : [];
+  const specParts = parseSpecsValues(item.specs);
   return meaningfulKeywords.length + specParts.length;
 }
 

@@ -12,6 +12,7 @@ import {
   insertMessage,
 } from "@/app/lib/supabase/conversations";
 import { getRequirementById } from "@/app/lib/supabase/requirements";
+import { parseSpecsValues } from "@/app/lib/dna";
 import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
 
 /* ---- 生成角色首次系统消息（多语言） ---- */
@@ -48,7 +49,8 @@ function buildSystemMessage(
   const usePart = requirement.keywords.length > 1
     ? requirement.keywords.slice(1, 3).join("、")
     : (lo === "zh" ? "通用面料" : lo === "en" ? "General fabric" : lo === "ja" ? "一般生地" : "일반 원단");
-  const specs = requirement.specs || (lo === "zh" ? "待确认" : lo === "en" ? "TBD" : lo === "ja" ? "未定" : "미정");
+  const specsRaw = requirement.specs || (lo === "zh" ? "待确认" : lo === "en" ? "TBD" : lo === "ja" ? "未定" : "미정");
+  const specs = parseSpecsValues(specsRaw).join("、") || specsRaw;
 
   return role === "buyer"
     ? tpl.buyer(fabricName, usePart, specs)
