@@ -31,7 +31,7 @@ export default function TopBar() {
         </Link>
       </nav>
 
-      <div style={{ marginLeft: "auto" }}>
+      <div>
         <LanguageSwitcher />
       </div>
     </header>
