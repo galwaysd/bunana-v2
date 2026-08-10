@@ -4,16 +4,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
+import { useI18n, LOCALE_TO_DATE } from "@/app/i18n";
 import styles from "../square.module.css";
 
 /* ----- 从 specs 中解析 14 字段规格项 ----- */
-function parseSpecsIntoGrid(specs: string): { label: string; value: string }[] {
-  if (!specs || specs === "待确认") return [];
+function parseSpecsIntoGrid(specs: string, specLabel: string): { label: string; value: string }[] {
+  if (!specs || specs === "待确认" || specs === "TBD" || specs === "未定" || specs === "미정") return [];
   return specs
     .split(/[，,、]/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-    .map((s) => ({ label: s.length > 6 ? s.slice(0, 6) : "规格", value: s }));
+    .map((s) => ({ label: s.length > 6 ? s.slice(0, 6) : specLabel, value: s }));
 }
 
 function estimateConfirmedCount(item: RequirementRow): number {
@@ -30,6 +31,7 @@ function estimateConfirmedCount(item: RequirementRow): number {
 export default function SquareDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t, locale } = useI18n();
   const id = params.id as string;
 
   const [item, setItem] = useState<RequirementRow | null>(null);
@@ -46,12 +48,12 @@ export default function SquareDetailPage() {
         const data = await resp.json();
         if (cancelled) return;
         if (!data.success || !data.requirement) {
-          setError(data.error ?? "未找到该记录。");
+          setError(data.error ?? t("squareDetail.notFound"));
           return;
         }
         setItem(data.requirement);
       } catch (e) {
-        if (!cancelled) setError("网络错误，加载失败。");
+        if (!cancelled) setError(t("squareDetail.networkError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -75,7 +77,7 @@ export default function SquareDetailPage() {
   if (loading) {
     return (
       <main className={styles.detailPage}>
-        <p className={styles.loading}>加载中...</p>
+        <p className={styles.loading}>{t("squareDetail.loading")}</p>
       </main>
     );
   }
@@ -83,25 +85,25 @@ export default function SquareDetailPage() {
   if (error || !item) {
     return (
       <main className={styles.detailPage}>
-        <div className="error-banner">{error || "记录不存在"}</div>
+        <div className="error-banner">{error || t("squareDetail.recordNotExist")}</div>
         <Link
           href="/square"
           className={styles.detailBack}
           style={{ marginTop: 16 }}
         >
-          ← 返回 Fabric DNA 数据库
+          {t("squareDetail.backToDatabase")}
         </Link>
       </main>
     );
   }
 
-  const specsGrid = parseSpecsIntoGrid(item.specs);
+  const specsGrid = parseSpecsIntoGrid(item.specs, t("squareDetail.specLabel"));
   const confirmedCount = estimateConfirmedCount(item);
 
   return (
     <main className={styles.detailPage}>
       <Link href="/square" className={styles.detailBack}>
-        ← 返回 Fabric DNA 数据库
+        {t("squareDetail.backToDatabase")}
       </Link>
 
       <div className={styles.detailCard}>
@@ -140,7 +142,7 @@ export default function SquareDetailPage() {
           {/* Header: name + DNA badge */}
           <div className={styles.detailHeader}>
             <h1 className={styles.detailName}>
-              {item.fabricName || "未命名面料"}
+              {item.fabricName || t("squareDetail.unnamedFabric")}
             </h1>
             <span className={styles.detailDnaBadge}>FABRIC DNA</span>
           </div>
@@ -149,14 +151,14 @@ export default function SquareDetailPage() {
           <div className={styles.detailMeta}>
             <span className={styles.detailProvider}>{item.aiProvider}</span>
             <span className={styles.detailConfirmed}>
-              AI 已确认 {confirmedCount} 项
+              {t("squareDetail.aiConfirmed", { n: confirmedCount })}
             </span>
           </div>
 
           {/* Keywords */}
           {item.keywords.length > 0 && (
             <div className={styles.detailSection}>
-              <h2 className={styles.detailSectionTitle}>标签</h2>
+              <h2 className={styles.detailSectionTitle}>{t("squareDetail.tags")}</h2>
               <div className={styles.detailKeywords}>
                 {item.keywords.map((kw) => (
                   <span key={kw} className={styles.detailKeyword}>
@@ -170,7 +172,7 @@ export default function SquareDetailPage() {
           {/* Specs — 2-column grid (14 字段) */}
           {specsGrid.length > 0 && (
             <div className={styles.detailSection}>
-              <h2 className={styles.detailSectionTitle}>规格参数</h2>
+              <h2 className={styles.detailSectionTitle}>{t("squareDetail.specs")}</h2>
               <div className={styles.specsGrid}>
                 {specsGrid.map((spec, i) => (
                   <div key={i} className={styles.specItem}>
@@ -185,7 +187,7 @@ export default function SquareDetailPage() {
           {/* Summary */}
           {item.summary && (
             <div className={styles.detailSection}>
-              <h2 className={styles.detailSectionTitle}>摘要</h2>
+              <h2 className={styles.detailSectionTitle}>{t("squareDetail.summary")}</h2>
               <p className={styles.detailSummary}>{item.summary}</p>
             </div>
           )}
@@ -193,7 +195,7 @@ export default function SquareDetailPage() {
           {/* Date */}
           <div className={styles.detailDate}>
             {item.createdAt
-              ? `发布于 ${new Date(item.createdAt).toLocaleString("zh-CN")}`
+              ? `${t("squareDetail.publishedAt")} ${new Date(item.createdAt).toLocaleString(LOCALE_TO_DATE[locale])}`
               : ""}
           </div>
         </div>
@@ -205,13 +207,13 @@ export default function SquareDetailPage() {
           className={styles.detailNeedBtn}
           onClick={handleDemandIntent}
         >
-          我需要这个面料
+          {t("squareDetail.needFabric")}
         </button>
         <button
           className={styles.detailHaveBtn}
           onClick={handleSupplyIntent}
         >
-          我有这个面料
+          {t("squareDetail.haveFabric")}
         </button>
       </div>
     </main>

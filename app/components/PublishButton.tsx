@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import type { FabricDNA, ImagePayload } from "@/app/types";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/app/lib/api-client";
+import { useI18n } from "@/app/i18n";
 
 type Props = {
   dna: FabricDNA;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function PublishButton({ dna, text, images, aiProvider }: Props) {
+  const { t } = useI18n();
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -30,7 +32,7 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
       );
 
       if (!data.success) {
-        setError(data.error ?? "发布失败，请重试。");
+        setError(data.error ?? t("publish.publishError"));
         return;
       }
 
@@ -38,11 +40,11 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
       router.push("/square");
     } catch (e) {
       console.error("Publish error:", e);
-      setError("网络错误，发布失败。");
+      setError(t("publish.networkError"));
     } finally {
       setPublishing(false);
     }
-  }, [publishing, dna, text, images, aiProvider, router]);
+  }, [publishing, dna, text, images, aiProvider, router, t]);
 
   return (
     <div style={{ marginTop: "0.75rem" }}>
@@ -62,7 +64,7 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
           transition: "background 0.2s",
         }}
       >
-        {publishing ? "发布中..." : "发布广场"}
+        {publishing ? t("publish.publishing") : t("publish.publish")}
       </button>
       {error && (
         <div

@@ -3,7 +3,8 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { FabricDNA, FabricField, ImagePayload } from "@/app/types";
-import { DNA_FIELD_LABELS } from "@/app/lib/dna";
+import { useI18n } from "@/app/i18n";
+import { DNA_FIELD_KEYS } from "@/app/lib/dna";
 
 type Props = {
   dna: FabricDNA;
@@ -77,7 +78,7 @@ function EditableBandField({
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          aria-label={`编辑${label}`}
+          aria-label={t("dnaCard.editLabel", { label })}
         />
       </div>
     );
@@ -91,7 +92,7 @@ function EditableBandField({
         className={`dna-id-band-value ${size === "sm" ? "sm" : ""}`}
         onClick={startEdit}
         disabled={!editable}
-        aria-label={editable ? `点击编辑${label}` : undefined}
+        aria-label={editable ? t("dnaCard.clickToEdit", { label }) : undefined}
         style={{ textAlign: "left" }}
       >
         {field.value}
@@ -157,7 +158,7 @@ function EditableSpecField({
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          aria-label={`编辑${label}`}
+          aria-label={t("dnaCard.editLabel", { label })}
         />
       </div>
     );
@@ -171,7 +172,7 @@ function EditableSpecField({
         className="dna-id-field-value"
         onClick={startEdit}
         disabled={!editable}
-        aria-label={editable ? `点击编辑${label}` : undefined}
+        aria-label={editable ? t("dnaCard.clickToEdit", { label }) : undefined}
         style={{ textAlign: "left" }}
       >
         {field.value}
@@ -186,6 +187,17 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   { dna, images = [], onDnaChange },
   ref
 ) {
+  const { t } = useI18n();
+
+  // Build label map from i18n
+  const dnaLabels = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const key of DNA_FIELD_KEYS) {
+      map[key] = t(`dna.${key}`);
+    }
+    return map;
+  }, [t]);
+
   const specs = useMemo(
     () => SPEC_FIELDS.map((key) => [key, dna[key]] as const),
     [dna]
@@ -222,7 +234,7 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
             <div className="dna-id-swatch" key={image.imageHash}>
               <Image
                 src={image.dataUrl}
-                alt={image.name || "上传的面料图样"}
+                alt={image.name || t("dnaCard.imageAlt")}
                 fill
                 unoptimized
                 sizes="(max-width: 768px) 100vw, 760px"
@@ -237,11 +249,11 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
       <div className="dna-id-header">
         <div className="dna-id-titles">
           <span className="dna-id-title">FABRIC DNA</span>
-          <span className="dna-id-subtitle">织物身份证</span>
+          <span className="dna-id-subtitle">{t("dnaCard.subtitle")}</span>
         </div>
         <Image
           src="/brand/bunana_logo_lockup.png"
-          alt="布拿拿 Bunana"
+          alt={t("dnaCard.logoAlt")}
           width={235}
           height={75}
           style={{
@@ -259,14 +271,14 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
       {/* ── Identity Band（面料名称 + 用途）── */}
       <div className="dna-id-band">
         <EditableBandField
-          label="面料名称"
+          label={dnaLabels.fabricName}
           field={dna.fabricName}
           fieldKey="fabricName"
           editable={editable}
           onChange={handleFieldChange}
         />
         <EditableBandField
-          label="用途"
+          label={dnaLabels.use}
           field={dna.use}
           fieldKey="use"
           size="sm"
@@ -280,7 +292,7 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
         {specs.map(([key, field]) => (
           <EditableSpecField
             key={key}
-            label={DNA_FIELD_LABELS[key]}
+            label={dnaLabels[key]}
             field={field}
             fieldKey={key}
             editable={editable}

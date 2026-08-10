@@ -6,13 +6,14 @@ import { useParams, useSearchParams } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
 import type { Conversation, Message } from "@/app/lib/supabase/conversations";
 import { apiGet, apiPost, apiPut } from "@/app/lib/api-client";
+import { useI18n, LOCALE_TO_DATE } from "@/app/i18n";
 import styles from "../chat.module.css";
 
 type ChatRole = "buyer" | "supplier";
 
 /* ---- 从 specs 解析精简规格 ---- */
 function parseSpecsBrief(specs: string): string[] {
-  if (!specs || specs === "待确认") return [];
+  if (!specs || specs === "待确认" || specs === "TBD" || specs === "未定" || specs === "미정") return [];
   return specs
     .split(/[，,、]/)
     .map((s) => s.trim())
@@ -21,17 +22,17 @@ function parseSpecsBrief(specs: string): string[] {
 }
 
 /* ---- 角色标签 ---- */
-const ROLE_LABELS: Record<string, string> = {
-  buyer: "需求方",
-  supplier: "供应方",
-  system: "系统",
-};
+function getRoleLabel(role: string, t: (path: string) => string): string {
+  if (role === "buyer") return t("chat.roleBuyer");
+  if (role === "supplier") return t("chat.roleSupplier");
+  return t("chat.roleSystem");
+}
 
 /* ---- 格式化时间 ---- */
-function formatTime(iso: string): string {
+function formatTime(iso: string, dateLocale: string): string {
   try {
     const d = new Date(iso);
-    return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }
@@ -40,6 +41,7 @@ function formatTime(iso: string): string {
 export default function ChatPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const { t, locale } = useI18n();
   const requirementId = params.requirementId as string;
   const role = (searchParams.get("role") ?? "buyer") as ChatRole;
 
@@ -64,7 +66,7 @@ export default function ChatPage() {
         );
         if (cancelled) return;
         if (!reqData.success || !reqData.requirement) {
-          setError("该需求记录不存在。");
+          setError(t("chat.notExist"));
           setLoading(false);
           return;
         }
@@ -73,18 +75,18 @@ export default function ChatPage() {
         // 初始化聊天
         const chatData = await apiPost<{ success: boolean; conversation?: Conversation; messages?: Message[]; error?: string }>(
           "/api/bunana/conversations",
-          { requirementId, role }
+          { requirementId, role, locale }
         );
         if (cancelled) return;
         if (!chatData.success) {
-          setError(chatData.error ?? "初始化聊天失败。");
+          setError(chatData.error ?? t("chat.initFailed"));
           setLoading(false);
           return;
         }
         setConversation(chatData.conversation);
         setMessages(chatData.messages ?? []);
       } catch {
-        if (!cancelled) setError("网络错误。");
+        if (!cancelled) setError(t("chat.networkError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -118,14 +120,14 @@ export default function ChatPage() {
         }
       );
       if (!data.success) {
-        setError(data.error ?? "发送失败。");
+        setError(data.error ?? t("chat.sendFailed"));
         setInput(text); // 恢复输入
         return;
       }
       setMessages(data.messages ?? []);
       setError("");
     } catch {
-      setError("发送消息失败。");
+      setError(t("chat.sendError"));
       setInput(text);
     } finally {
       setSending(false);
@@ -148,7 +150,7 @@ export default function ChatPage() {
     return (
       <main className={styles.chatPage}>
         <div className={styles.chatLoading}>
-          <span>正在进入聊天...</span>
+          <span>{t("chat.entering")}</span>
         </div>
       </main>
     );
@@ -161,7 +163,7 @@ export default function ChatPage() {
         <div className={styles.chatError}>
           <div className="error-banner">{error}</div>
           <Link href="/square" className="btn-weave-outline">
-            ← 返回布市场
+            {t("chat.backToSquare")}
           </Link>
         </div>
       </main>
@@ -175,12 +177,12 @@ export default function ChatPage() {
       {/* Header: Fabric DNA 摘要 */}
       <header className={styles.chatHeader}>
         <Link href={`/square/${requirementId}`} className={styles.chatBack}>
-          ← 返回面料详情
+          {t("chat.backToDetail")}
         </Link>
         <div className={styles.chatDnaBar}>
           <span className={styles.chatDnaBadge}>FABRIC DNA</span>
           <h1 className={styles.chatFabricName}>
-            {requirement?.fabricName || "未命名面料"}
+            {requirement?.fabricName || t("chat.unnamedFabric")}
           </h1>
         </div>
         {specsBrief.length > 0 && (
@@ -197,7 +199,7 @@ export default function ChatPage() {
       {/* Messages */}
       <div className={styles.chatMessages}>
         {messages.length === 0 && (
-          <p className={styles.chatEmpty}>暂无消息。开始对话吧。</p>
+          <p className={styles.chatEmpty}>{t("chat.emptyMessages")}</p>
         )}
         {messages.map((msg) => (
           <div
@@ -206,12 +208,12 @@ export default function ChatPage() {
           >
             {msg.sender !== "system" && (
               <span className={styles.msgSender}>
-                {ROLE_LABELS[msg.sender] || msg.sender}
+                {getRoleLabel(msg.sender, t)}
               </span>
             )}
             <div className={styles.msgBubble}>{msg.content}</div>
             <span className={styles.msgMeta}>
-              {formatTime(msg.createdAt)}
+              {formatTime(msg.createdAt, LOCALE_TO_DATE[locale])}
             </span>
           </div>
         ))}
@@ -227,7 +229,7 @@ export default function ChatPage() {
           ref={inputRef}
           type="text"
           className={styles.chatInput}
-          placeholder="输入消息..."
+          placeholder={t("chat.inputPlaceholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -239,7 +241,7 @@ export default function ChatPage() {
           onClick={handleSend}
           disabled={!input.trim() || sending}
         >
-          {sending ? "发送中" : "发送"}
+          {sending ? t("chat.sending") : t("chat.send")}
         </button>
       </div>
     </main>

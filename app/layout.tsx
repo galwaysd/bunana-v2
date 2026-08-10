@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import TopBar from "./components/TopBar";
+import { LanguageProvider } from "./i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BUNANA · 织物工作台",
-  description: "一句话，找到你的布。"
+  title: "BUNANA · Fabric Workbench",
+  description: "Find your fabric in one sentence.",
 };
 
 export default function RootLayout({
@@ -15,8 +16,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <TopBar />
-        {children}
+        <LanguageProvider>
+          <TopBar />
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -4,13 +4,14 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
+import { useI18n } from "@/app/i18n";
 import styles from "./square.module.css";
 
 /* ----- 筛选分类定义 ----- */
 const FILTER_CATEGORIES = [
-  { key: "composition" as const, label: "材质" },
-  { key: "use" as const, label: "用途" },
-  { key: "features" as const, label: "特性" },
+  { key: "composition" as const, labelKey: "square.filterComposition" },
+  { key: "use" as const, labelKey: "square.filterUse" },
+  { key: "features" as const, labelKey: "square.filterFeatures" },
 ] as const;
 
 type FilterKey = (typeof FILTER_CATEGORIES)[number]["key"];
@@ -97,6 +98,7 @@ function estimateConfirmedCount(item: RequirementRow): number {
 
 export default function SquarePage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [items, setItems] = useState<RequirementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -113,12 +115,12 @@ export default function SquarePage() {
         const data = await resp.json();
         if (cancelled) return;
         if (!data.success) {
-          setError(data.error ?? "加载广场失败。");
+          setError(data.error ?? t("square.loadFailed"));
           return;
         }
         setItems(data.requirements ?? []);
       } catch (e) {
-        if (!cancelled) setError("网络错误，加载失败。");
+        if (!cancelled) setError(t("square.networkError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -176,13 +178,13 @@ export default function SquarePage() {
       {/* Header */}
       <header className={styles.squareHeader}>
         <div>
-          <h1 className={styles.squareTitle}>Fabric DNA 数据库</h1>
+          <h1 className={styles.squareTitle}>{t("square.title")}</h1>
           <p className={styles.squareSubtitle}>
-            已构建的面料身份档案
+            {t("square.subtitle")}
           </p>
         </div>
         <Link href="/" className="btn-weave-outline">
-          ← 返回工作台
+          {t("square.backToWorkbench")}
         </Link>
       </header>
 
@@ -190,7 +192,7 @@ export default function SquarePage() {
       <div className={styles.filterBar}>
         {FILTER_CATEGORIES.map((cat) => (
           <div key={cat.key} className={styles.filterGroup}>
-            <span className={styles.filterLabel}>{cat.label}</span>
+            <span className={styles.filterLabel}>{t(cat.labelKey)}</span>
             {filterOptions[cat.key].map((opt) => (
               <button
                 key={opt}
@@ -214,10 +216,10 @@ export default function SquarePage() {
         {hasActiveFilters && (
           <>
             <button className={styles.filterClear} onClick={clearAllFilters}>
-              清除筛选
+              {t("square.clearFilter")}
             </button>
             <span className={styles.filterCount}>
-              {filteredItems.length} 条结果
+              {t("square.resultCount", { n: filteredItems.length })}
             </span>
           </>
         )}
@@ -225,12 +227,12 @@ export default function SquarePage() {
 
       {/* States */}
       {error && <div className="error-banner">{error}</div>}
-      {loading && <p className={styles.loading}>加载中...</p>}
+      {loading && <p className={styles.loading}>{t("square.loading")}</p>}
       {!loading && !error && filteredItems.length === 0 && (
         <p className={styles.empty}>
           {hasActiveFilters
-            ? "没有匹配的面料档案，试试调整筛选条件。"
-            : "暂无 Fabric DNA 档案。回首页创建一份吧。"}
+            ? t("square.emptyFiltered")
+            : t("square.emptyNoData")}
         </p>
       )}
 
@@ -268,7 +270,7 @@ export default function SquarePage() {
               <div className={styles.cardBody}>
                 {/* Fabric name */}
                 <h3 className={styles.cardName}>
-                  {item.fabricName || "未命名面料"}
+                  {item.fabricName || t("square.unnamedFabric")}
                 </h3>
 
                 {/* Use */}
@@ -293,13 +295,13 @@ export default function SquarePage() {
                     className={styles.cardNeedBtn}
                     onClick={(e) => goChat(e, item.id, "buyer")}
                   >
-                    我需要这个面料
+                    {t("square.needFabric")}
                   </button>
                   <button
                     className={styles.cardHaveBtn}
                     onClick={(e) => goChat(e, item.id, "supplier")}
                   >
-                    我有这个面料
+                    {t("square.haveFabric")}
                   </button>
                 </div>
               </div>

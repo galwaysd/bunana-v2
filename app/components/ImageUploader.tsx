@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { readImagePayload } from "@/app/lib/image";
+import { useI18n } from "@/app/i18n";
 import type { ImagePayload } from "@/app/types";
 
 type Props = {
@@ -17,6 +18,7 @@ export default function ImageUploader({
   onRemoveImage,
   disabled
 }: Props) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const maxImages = 3;
@@ -103,7 +105,7 @@ export default function ImageUploader({
               textAlign: "center",
               padding: 0
             }}
-            title="移除"
+            title={t("imageUploader.remove")}
           >
             ×
           </button>
@@ -125,7 +127,7 @@ export default function ImageUploader({
             fontSize: "28px",
             opacity: disabled ? 0.4 : 1
           }}
-          title="点击上传图片"
+          title={t("imageUploader.uploadHint")}
         >
           +
           <input
@@ -142,7 +144,7 @@ export default function ImageUploader({
 
       {images.length === 0 && (
         <span style={{ color: "#999", fontSize: "0.875rem" }}>
-          上传 1-3 张布料照片
+          {t("imageUploader.uploadPrompt")}
         </span>
       )}
     </div>

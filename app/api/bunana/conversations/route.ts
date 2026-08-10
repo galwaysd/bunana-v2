@@ -14,31 +14,50 @@ import {
 import { getRequirementById } from "@/app/lib/supabase/requirements";
 import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
 
-/* ---- 生成角色首次系统消息 ---- */
+/* ---- 生成角色首次系统消息（多语言） ---- */
 function buildSystemMessage(
   role: "buyer" | "supplier",
-  requirement: { fabricName: string; specs: string; summary: string; keywords: string[] }
+  requirement: { fabricName: string; specs: string; summary: string; keywords: string[] },
+  locale: string
 ): string {
-  if (role === "buyer") {
-    const usePart =
-      requirement.keywords.length > 1
-        ? requirement.keywords.slice(1, 3).join("、")
-        : "通用面料";
-    return (
-      `我正在寻找这个面料：\n\n${requirement.fabricName || "未命名面料"}\n\n` +
-      `用途：${usePart}\n` +
-      `规格：${requirement.specs || "待确认"}\n\n` +
-      `希望寻找供应商。`
-    );
-  }
-  // supplier
-  const specs = requirement.specs || "规格接近";
-  return (
-    `我有类似这个面料：\n\n${requirement.fabricName || "未命名面料"}\n\n` +
-    `规格接近：\n${specs}\n\n` +
-    `可以进一步沟通。`
-  );
+  const lo = ["zh", "en", "ja", "ko"].includes(locale) ? locale : "zh";
+  const templates: Record<string, {
+    buyer: (name: string, use: string, specs: string) => string;
+    supplier: (name: string, specs: string) => string;
+  }> = {
+    zh: {
+      buyer: (n, u, s) => `我正在寻找这个面料：\n\n${n}\n\n用途：${u}\n规格：${s}\n\n希望寻找供应商。`,
+      supplier: (n, s) => `我有类似这个面料：\n\n${n}\n\n规格接近：\n${s}\n\n可以进一步沟通。`,
+    },
+    en: {
+      buyer: (n, u, s) => `I'm looking for this fabric:\n\n${n}\n\nApplication: ${u}\nSpecs: ${s}\n\nLooking for suppliers.`,
+      supplier: (n, s) => `I have a similar fabric:\n\n${n}\n\nSimilar specs:\n${s}\n\nLet's discuss further.`,
+    },
+    ja: {
+      buyer: (n, u, s) => `この生地を探しています：\n\n${n}\n\n用途：${u}\n仕様：${s}\n\n供給者を探しています。`,
+      supplier: (n, s) => `この生地と似たものがあります：\n\n${n}\n\n類似仕様：\n${s}\n\n further相談しましょう。`,
+    },
+    ko: {
+      buyer: (n, u, s) => `이 원단을 찾고 있습니다：\n\n${n}\n\n용도：${u}\n사양：${s}\n\n공급자를 찾고 있습니다.`,
+      supplier: (n, s) => `이 원단과 유사한 것이 있습니다：\n\n${n}\n\n유사 사양：\n${s}\n\n추가 상담해요.`,
+    },
+  };
+
+  const tpl = templates[lo];
+  const fabricName = requirement.fabricName || (lo === "zh" ? "未命名面料" : lo === "en" ? "Unnamed Fabric" : lo === "ja" ? "名前なし生地" : "이름 없는 원단");
+  const usePart = requirement.keywords.length > 1
+    ? requirement.keywords.slice(1, 3).join("、")
+    : (lo === "zh" ? "通用面料" : lo === "en" ? "General fabric" : lo === "ja" ? "一般生地" : "일반 원단");
+  const specs = requirement.specs || (lo === "zh" ? "待确认" : lo === "en" ? "TBD" : lo === "ja" ? "未定" : "미정");
+
+  return role === "buyer"
+    ? tpl.buyer(fabricName, usePart, specs)
+    : tpl.supplier(fabricName, specs);
 }
+
+/* ---- 跨语言检测系统消息是否已存在 ---- */
+const BUYER_MARKERS = ["我正在寻找", "I'm looking for", "この生地を探しています", "이 원단을 찾고 있습니다"];
+const SUPPLIER_MARKERS = ["我有类似", "I have a similar", "この生地と似たものがあります", "이 원단과 유사한 것이 있습니다"];
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -55,6 +74,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const requirementId: string = (body.requirementId ?? "").trim();
     const role: string = (body.role ?? "").trim();
+    const locale: string = (body.locale ?? "zh").trim();
 
     if (!requirementId || !role) {
       return NextResponse.json(
@@ -82,12 +102,13 @@ export async function POST(request: NextRequest) {
     const conversation = await getOrCreateConversation(requirementId);
     let messages = await getMessages(conversation.id);
 
-    // 如果该 role 还没有系统消息，自动创建
+    // 如果该 role 还没有系统消息，自动创建（跨语言检测）
+    const markers = role === "buyer" ? BUYER_MARKERS : SUPPLIER_MARKERS;
     const hasSystemMsg = messages.some(
-      (m) => m.sender === "system" && m.content.includes(role === "buyer" ? "我正在寻找" : "我有类似")
+      (m) => m.sender === "system" && markers.some((mk) => m.content.includes(mk))
     );
     if (!hasSystemMsg) {
-      const sysContent = buildSystemMessage(role, requirement);
+      const sysContent = buildSystemMessage(role as "buyer" | "supplier", requirement, locale);
       await insertMessage(conversation.id, "system", sysContent);
       messages = await getMessages(conversation.id);
     }

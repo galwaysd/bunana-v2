@@ -1,6 +1,7 @@
 "use client";
 
 import "./StatusMark.css";
+import { useI18n } from "@/app/i18n";
 
 export type StatusMarkVariant = "confirmed" | "identified" | "inferred" | "missing";
 export type StatusMarkSize = "sm" | "md";
@@ -8,7 +9,7 @@ export type StatusMarkSize = "sm" | "md";
 export interface StatusMarkProps {
   /** Status determines dot style and color */
   status: StatusMarkVariant;
-  /** Label text shown alongside the dot */
+  /** Label text shown alongside the dot (overrides i18n default) */
   label?: string;
   /** Size: sm = 10px, md = 14px */
   size?: StatusMarkSize;
@@ -17,11 +18,11 @@ export interface StatusMarkProps {
   className?: string;
 }
 
-const STATUS_LABELS: Record<StatusMarkVariant, string> = {
-  confirmed: "已确认",
-  identified: "已识别",
-  inferred: "推测",
-  missing: "缺失",
+const STATUS_LABEL_KEYS: Record<StatusMarkVariant, string> = {
+  confirmed: "status.confirmed",
+  identified: "status.identified",
+  inferred: "status.inferred",
+  missing: "status.missing",
 };
 
 /**
@@ -40,6 +41,7 @@ export default function StatusMark({
   title,
   className,
 }: StatusMarkProps) {
+  const { t } = useI18n();
   const cx = [
     "smark",
     `smark--${status}`,
@@ -47,8 +49,9 @@ export default function StatusMark({
   ];
   if (className) cx.push(className);
 
-  const displayLabel = label ?? STATUS_LABELS[status];
-  const ariaLabel = title ?? STATUS_LABELS[status];
+  const defaultLabel = t(STATUS_LABEL_KEYS[status]);
+  const displayLabel = label ?? defaultLabel;
+  const ariaLabel = title ?? defaultLabel;
 
   return (
     <span className={cx.join(" ")} title={ariaLabel} aria-label={ariaLabel}>
@@ -58,4 +61,4 @@ export default function StatusMark({
   );
 }
 
-export { STATUS_LABELS };
+export { STATUS_LABEL_KEYS };

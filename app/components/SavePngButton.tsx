@@ -2,6 +2,7 @@
 
 import { useState, useCallback, type RefObject } from "react";
 import { toPng } from "html-to-image";
+import { useI18n } from "@/app/i18n";
 
 type Props = {
   /** 目标 DOM 元素的 ref */
@@ -9,12 +10,13 @@ type Props = {
 };
 
 export default function SavePngButton({ targetRef }: Props) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const handleSave = useCallback(async () => {
     if (!targetRef.current) {
-      setError("卡片尚未渲染，请稍后重试。");
+      setError(t("savePng.cardNotReady"));
       return;
     }
     if (saving) return;
@@ -43,11 +45,11 @@ export default function SavePngButton({ targetRef }: Props) {
       document.body.removeChild(link);
     } catch (e) {
       console.error("PNG export failed:", e);
-      setError("导出 PNG 失败，请重试。");
+      setError(t("savePng.exportError"));
     } finally {
       setSaving(false);
     }
-  }, [targetRef, saving]);
+  }, [targetRef, saving, t]);
 
   return (
     <div style={{ marginTop: "0.75rem" }}>
@@ -67,7 +69,7 @@ export default function SavePngButton({ targetRef }: Props) {
           transition: "background 0.2s"
         }}
       >
-        {saving ? "正在生成 PNG..." : "保存 Fabric DNA"}
+        {saving ? t("savePng.saving") : t("savePng.save")}
       </button>
       {error && (
         <div

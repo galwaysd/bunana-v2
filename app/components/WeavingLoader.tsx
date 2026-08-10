@@ -1,6 +1,9 @@
 "use client";
 
+import { useI18n } from "@/app/i18n";
+
 export default function WeavingLoader() {
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -24,7 +27,7 @@ export default function WeavingLoader() {
       />
       <style>{`@keyframes weave-spin { to { transform: rotate(360deg); } }`}</style>
       <span style={{ color: "#666", fontSize: "0.9rem" }}>
-        布拿拿正在识别面料...
+        {t("weavingLoader.loading")}
       </span>
     </div>
   );

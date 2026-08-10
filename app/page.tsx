@@ -8,6 +8,7 @@ import WeavingLoader from "./components/WeavingLoader";
 import SavePngButton from "./components/SavePngButton";
 import PublishButton from "./components/PublishButton";
 import { useAnalyze } from "./hooks/useAnalyze";
+import { useI18n } from "./i18n";
 import type { ImagePayload, FabricDNA } from "./types";
 // DNA 存在即可发布 — AI 已填满所有字段
 
@@ -21,6 +22,7 @@ function channelState(phase: FlowPhase): string {
 }
 
 export default function Home() {
+  const { t, tArray } = useI18n();
   const [images, setImages] = useState<ImagePayload[]>([]);
   const [text, setText] = useState("");
 
@@ -84,7 +86,7 @@ export default function Home() {
 
         {/* ======== Left: Input Panel ======== */}
         <aside className="input-panel">
-          <div className="panel-label">布样工作台</div>
+          <div className="panel-label">{t("home.panelLabel")}</div>
 
           <ImageUploader
             images={images}
@@ -106,7 +108,7 @@ export default function Home() {
               disabled={!canAnalyze}
               className="btn-weave"
             >
-              {phase === "analyzing" ? "织卡中…" : "开始织卡"}
+              {phase === "analyzing" ? t("home.weavingLoading") : t("home.weavingBtn")}
             </button>
           )}
 
@@ -119,7 +121,7 @@ export default function Home() {
               className="btn-weave"
               style={{ opacity: 0.85 }}
             >
-              重新分析
+              {t("home.reanalyze")}
             </button>
           )}
         </aside>
@@ -163,34 +165,31 @@ export default function Home() {
               <div className="dna-id-header">
                 <div className="dna-id-titles">
                   <span className="dna-id-title">FABRIC DNA</span>
-                  <span className="dna-id-subtitle">织物身份证</span>
+                  <span className="dna-id-subtitle">{t("home.dnaSubtitle")}</span>
                 </div>
                 <span className="dna-id-provider">
-                  {phase === "analyzing" ? "读取中…" : "待织入"}
+                  {phase === "analyzing" ? t("home.readingDna") : t("home.pendingWeave")}
                 </span>
               </div>
               <div className="dna-id-band">
                 <div className="dna-id-band-row">
-                  <span className="dna-id-band-label">面料名称</span>
+                  <span className="dna-id-band-label">{t("dna.fabricName")}</span>
                   <span className="dna-id-band-value">—</span>
                 </div>
                 <div className="dna-id-band-row">
-                  <span className="dna-id-band-label">用途</span>
+                  <span className="dna-id-band-label">{t("dna.use")}</span>
                   <span className="dna-id-band-value sm">—</span>
                 </div>
               </div>
               <div className="dna-id-summary">
                 <span className="dna-id-status-text">
                   {phase === "analyzing"
-                    ? "AI 正在读取布样数据…"
-                    : "上传布样或描述需求后开始织卡"}
+                    ? t("home.aiReading")
+                    : t("home.emptyHint")}
                 </span>
               </div>
               <div className="dna-id-fields">
-                {[
-                  "成分", "织法", "克重", "幅宽", "涂层",
-                  "防水", "起订量", "交期", "颜色", "特性"
-                ].map((label) => (
+                {tArray("home.dnaFields").map((label) => (
                   <div className="dna-id-field" key={label}>
                     <span className="dna-id-field-label">{label}</span>
                     <span className="dna-id-field-value">—</span>
@@ -218,7 +217,7 @@ export default function Home() {
 
       {/* ======== Bottom: Shuttle Track ======== */}
       <div className="shuttle-track">
-        <span className="shuttle-track-label">AI 自动整理中</span>
+        <span className="shuttle-track-label">{t("home.aiOrganizing")}</span>
         <div className="shuttle-track-line" />
       </div>
     </div>

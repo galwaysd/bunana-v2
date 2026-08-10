@@ -7,7 +7,6 @@ import {
   FabricDnaPanel,
 } from "@/app/ui-system";
 import type { StatusMarkVariant } from "@/app/ui-system/StatusMark";
-import { STATUS_LABELS } from "@/app/ui-system/StatusMark";
 
 import HeroPreview from "@/app/components/ui-preview/HeroPreview";
 import SquarePreview from "@/app/components/ui-preview/SquarePreview";
@@ -42,10 +41,10 @@ export default function UiPreviewPage() {
   ];
 
   const statusLegend = [
-    { status: "confirmed" as const, label: STATUS_LABELS.confirmed },
-    { status: "identified" as const, label: STATUS_LABELS.identified },
-    { status: "inferred" as const, label: STATUS_LABELS.inferred },
-    { status: "missing" as const, label: STATUS_LABELS.missing },
+    { status: "confirmed" as const, label: "已确认" },
+    { status: "identified" as const, label: "已识别" },
+    { status: "inferred" as const, label: "推测" },
+    { status: "missing" as const, label: "缺失" },
   ];
 
   const footerCounts = [

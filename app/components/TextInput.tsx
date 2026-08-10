@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n";
+
 type Props = {
   text: string;
   onTextChange: (text: string) => void;
@@ -7,12 +9,13 @@ type Props = {
 };
 
 export default function TextInput({ text, onTextChange, disabled }: Props) {
+  const { t } = useI18n();
   return (
     <div style={{ marginTop: "0.75rem" }}>
       <textarea
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
-        placeholder="描述你需要的面料，例如：雨伞用防水布，190T涤塔夫，PU涂层..."
+        placeholder={t("textInput.placeholder")}
         disabled={disabled}
         maxLength={1200}
         rows={3}
@@ -30,7 +33,7 @@ export default function TextInput({ text, onTextChange, disabled }: Props) {
       />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.25rem" }}>
         <span style={{ color: "#999", fontSize: "0.75rem" }}>
-          图片和文字至少填一项，最多 1200 字
+          {t("textInput.helperText")}
         </span>
         <span style={{ color: "#999", fontSize: "0.75rem" }}>
           {text.length}/1200

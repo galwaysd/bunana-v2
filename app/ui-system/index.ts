@@ -23,4 +23,4 @@ export type { FabricDnaPanelProps, FabricDnaPanelVariant, FabricDnaPanelDensity,
 
 export { default as StatusMark } from "./StatusMark";
 export type { StatusMarkProps, StatusMarkVariant, StatusMarkSize } from "./StatusMark";
-export { STATUS_LABELS } from "./StatusMark";
+export { STATUS_LABEL_KEYS } from "./StatusMark";

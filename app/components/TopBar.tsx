@@ -2,15 +2,18 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useI18n } from "@/app/i18n";
+import LanguageSwitcher from "@/app/i18n/LanguageSwitcher";
 
 export default function TopBar() {
   const pathname = usePathname();
+  const { t } = useI18n();
 
   return (
     <header className="topbar">
       <Link href="/" className="topbar-brand" style={{ textDecoration: "none" }}>
         <h1>BUNANA</h1>
-        <span>织物工作台</span>
+        <span>{t("nav.brand")}</span>
       </Link>
 
       <nav className="topbar-nav">
@@ -18,15 +21,19 @@ export default function TopBar() {
           href="/"
           className={pathname === "/" ? "active" : ""}
         >
-          工作台
+          {t("nav.workbench")}
         </Link>
         <Link
           href="/square"
           className={pathname === "/square" ? "active" : ""}
         >
-          布市场
+          {t("nav.square")}
         </Link>
       </nav>
+
+      <div style={{ marginLeft: "auto" }}>
+        <LanguageSwitcher />
+      </div>
     </header>
   );
 }
