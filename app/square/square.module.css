@@ -253,34 +253,53 @@
   text-overflow: ellipsis;
 }
 
-/* Footer bar */
+/* Footer — action buttons */
 .cardFooter {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid var(--color-border);
 }
 
-/* AI confirmed count */
-.cardConfirmed {
-  font-size: 0.7rem;
-  color: var(--color-brand-600);
-  background: var(--color-brand-50);
-  border-radius: 10px;
-  padding: 2px 8px;
+/* 我需要这个面料 — 需求方 绿色 */
+.cardNeedBtn {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 500;
+  color: #fff;
+  background: #355c45;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: center;
 }
 
-.cardDate {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+.cardNeedBtn:hover {
+  background: #2a4a37;
 }
 
-.cardProvider {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+/* 我有这个面料 — 供应方 橙色 */
+.cardHaveBtn {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  background: #d9822b;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  padding: 6px 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: center;
+}
+
+.cardHaveBtn:hover {
+  background: #c4721f;
 }
 
 /* ========================================
@@ -468,19 +487,38 @@
   border-top: 1px solid var(--color-border);
 }
 
-.detailDemandBtn {
+.detailNeedBtn {
   font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 500;
   color: #fff;
-  background: var(--color-brand-500);
+  background: #355c45;
   border: none;
   border-radius: var(--radius-md, 8px);
   padding: 10px 24px;
   cursor: pointer;
   transition: background 0.15s ease;
+  flex: 1;
 }
 
-.detailDemandBtn:hover {
-  background: var(--color-brand-600);
+.detailNeedBtn:hover {
+  background: #2a4a37;
+}
+
+.detailHaveBtn {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background: #d9822b;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex: 1;
+}
+
+.detailHaveBtn:hover {
+  background: #c4721f;
 }

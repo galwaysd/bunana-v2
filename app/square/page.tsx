@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
 import styles from "./square.module.css";
 
@@ -95,6 +96,7 @@ function estimateConfirmedCount(item: RequirementRow): number {
 }
 
 export default function SquarePage() {
+  const router = useRouter();
   const [items, setItems] = useState<RequirementRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -158,6 +160,13 @@ export default function SquarePage() {
 
   const clearAllFilters = () => {
     setActiveFilters({ composition: null, use: null, features: null });
+  };
+
+  /* 卡片按钮：防止冒泡，跳转聊天 */
+  const goChat = (e: React.MouseEvent, itemId: string, role: "buyer" | "supplier") => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/chat/${itemId}?role=${role}`);
   };
 
   const hasActiveFilters = Object.values(activeFilters).some(Boolean);
@@ -230,7 +239,6 @@ export default function SquarePage() {
         {filteredItems.map((item) => {
           const useLabel = extractUseFromKeywords(item.keywords, item.fabricName);
           const features = extractFeaturesFromSpecs(item.specs);
-          const confirmedCount = estimateConfirmedCount(item);
 
           return (
             <Link
@@ -279,16 +287,20 @@ export default function SquarePage() {
                   </div>
                 )}
 
-                {/* Footer: confirmed count + date */}
+                {/* Footer: action buttons */}
                 <div className={styles.cardFooter}>
-                  <span className={styles.cardConfirmed}>
-                    AI 已确认 {confirmedCount} 项
-                  </span>
-                  <span className={styles.cardDate}>
-                    {item.createdAt
-                      ? new Date(item.createdAt).toLocaleDateString("zh-CN")
-                      : ""}
-                  </span>
+                  <button
+                    className={styles.cardNeedBtn}
+                    onClick={(e) => goChat(e, item.id, "buyer")}
+                  >
+                    我需要这个面料
+                  </button>
+                  <button
+                    className={styles.cardHaveBtn}
+                    onClick={(e) => goChat(e, item.id, "supplier")}
+                  >
+                    我有这个面料
+                  </button>
                 </div>
               </div>
             </Link>

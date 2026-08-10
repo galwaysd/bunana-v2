@@ -64,12 +64,12 @@ export default function SquareDetailPage() {
 
   const handleDemandIntent = () => {
     if (!item) return;
-    const prefillText = `我需要 ${
-      item.fabricName || "这款面料"
-    }${
-      item.specs && item.specs !== "待确认" ? `，规格：${item.specs}` : ""
-    }`;
-    router.push(`/?text=${encodeURIComponent(prefillText)}`);
+    router.push(`/chat/${item.id}?role=buyer`);
+  };
+
+  const handleSupplyIntent = () => {
+    if (!item) return;
+    router.push(`/chat/${item.id}?role=supplier`);
   };
 
   if (loading) {
@@ -199,13 +199,19 @@ export default function SquareDetailPage() {
         </div>
       </div>
 
-      {/* Action */}
+      {/* Actions */}
       <div className={styles.detailActions}>
         <button
-          className={styles.detailDemandBtn}
+          className={styles.detailNeedBtn}
           onClick={handleDemandIntent}
         >
           我需要这个面料
+        </button>
+        <button
+          className={styles.detailHaveBtn}
+          onClick={handleSupplyIntent}
+        >
+          我有这个面料
         </button>
       </div>
     </main>

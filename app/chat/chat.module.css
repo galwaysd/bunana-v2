@@ -1,0 +1,230 @@
+/* ========================================
+   Chat page styles — 极简聊天
+   ======================================== */
+
+.chatPage {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+/* ---- Header with Fabric DNA summary ---- */
+.chatHeader {
+  flex-shrink: 0;
+  padding: var(--space-5, 20px) var(--space-5, 20px) var(--space-4, 16px);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.chatBack {
+  display: inline-block;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-bottom: var(--space-3, 12px);
+  transition: color 0.15s;
+}
+
+.chatBack:hover {
+  color: var(--color-text-primary);
+}
+
+.chatDnaBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  flex-wrap: wrap;
+}
+
+.chatDnaBadge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-brand-700);
+  background: var(--color-brand-100);
+  border: 1px solid var(--color-brand-200);
+  border-radius: 3px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.chatFabricName {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.chatDnaSpecs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.chatDnaSpec {
+  font-size: 0.72rem;
+  color: var(--color-text-secondary);
+  background: var(--color-brand-50);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+/* ---- Messages area ---- */
+.chatMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.chatEmpty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  padding: 2rem 0;
+}
+
+/* ---- Message bubbles ---- */
+.msgRow {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+}
+
+.msgRow.system {
+  align-self: center;
+  max-width: 90%;
+}
+
+.msgRow.buyer,
+.msgRow.supplier {
+  align-self: flex-start;
+}
+
+.msgRow.buyer .msgBubble {
+  background: var(--color-brand-50);
+  border: 1px solid var(--color-brand-200);
+  border-radius: 0 var(--radius-md, 8px) var(--radius-md, 8px) var(--radius-md, 8px);
+}
+
+.msgRow.supplier .msgBubble {
+  background: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  border-radius: var(--radius-md, 8px) 0 var(--radius-md, 8px) var(--radius-md, 8px);
+}
+
+.msgRow.system .msgBubble {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  text-align: center;
+}
+
+.msgBubble {
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msgSender {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-bottom: 3px;
+  padding: 0 4px;
+}
+
+.msgMeta {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
+/* ---- Input area ---- */
+.chatInputArea {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--space-2, 8px);
+  padding: var(--space-4, 16px) var(--space-5, 20px);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.chatInput {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.chatInput:focus {
+  border-color: var(--color-brand-400);
+}
+
+.chatInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.chatSendBtn {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: var(--space-3, 12px) var(--space-5, 20px);
+  background: var(--color-brand-600);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.chatSendBtn:hover:not(:disabled) {
+  background: var(--color-brand-700);
+}
+
+.chatSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Loading / Error states ---- */
+.chatLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  gap: var(--space-2, 8px);
+}
+
+.chatError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-4, 16px);
+  color: var(--color-text-muted);
+}
