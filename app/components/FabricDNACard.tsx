@@ -6,11 +6,14 @@ import type { FabricDNA, FabricField, ImagePayload } from "@/app/types";
 import { useI18n } from "@/app/i18n";
 import { DNA_FIELD_KEYS } from "@/app/lib/dna";
 
+export type CardMode = "edit" | "preview";
+
 type Props = {
   dna: FabricDNA;
   aiProvider: string;
   images?: ImagePayload[];
   onDnaChange?: (dna: FabricDNA) => void;
+  cardMode?: CardMode;
 };
 
 /** 规格字段（excl. fabricName + use，它们在身份标识区独立展示） */
@@ -18,6 +21,44 @@ const SPEC_FIELDS: (keyof FabricDNA)[] = [
   "composition", "weave", "weightGsm", "width", "coating",
   "waterproof", "moq", "leadTime", "color", "features"
 ];
+
+// ===== BandFieldDisplay — 面料名称 / 用途（identity band）展示模式 =====
+
+function BandFieldDisplay({
+  label,
+  field,
+  size = "md"
+}: {
+  label: string;
+  field: FabricField;
+  size?: "md" | "sm";
+}) {
+  return (
+    <div className="dna-id-band-row dna-id-band-display">
+      <span className="dna-id-band-label">{label}</span>
+      <span className={`dna-id-band-value ${size === "sm" ? "sm" : ""}`}>
+        {field.value}
+      </span>
+    </div>
+  );
+}
+
+// ===== SpecFieldDisplay — 规格网格字段展示模式 =====
+
+function SpecFieldDisplay({
+  label,
+  field
+}: {
+  label: string;
+  field: FabricField;
+}) {
+  return (
+    <div className="dna-id-field dna-id-field-display">
+      <span className="dna-id-field-label">{label}</span>
+      <span className="dna-id-field-value">{field.value}</span>
+    </div>
+  );
+}
 
 // ===== EditableBandField — 面料名称 / 用途（identity band） =====
 
@@ -186,7 +227,7 @@ function EditableSpecField({
 // ===== FabricDNACard =====
 
 const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
-  { dna, images = [], onDnaChange },
+  { dna, images = [], onDnaChange, cardMode = "edit" },
   ref
 ) {
   const { t } = useI18n();
@@ -222,9 +263,10 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   );
 
   const editable = Boolean(onDnaChange);
+  const isPreview = cardMode === "preview";
 
   return (
-    <div ref={ref} className="dna-id-card">
+    <div ref={ref} className={`dna-id-card ${isPreview ? "is-preview-mode" : ""}`}>
       {images.length > 0 && (
         <div
           className="dna-id-swatch-gallery"
@@ -272,34 +314,58 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
 
       {/* ── Identity Band（面料名称 + 用途）── */}
       <div className="dna-id-band">
-        <EditableBandField
-          label={dnaLabels.fabricName}
-          field={dna.fabricName}
-          fieldKey="fabricName"
-          editable={editable}
-          onChange={handleFieldChange}
-        />
-        <EditableBandField
-          label={dnaLabels.use}
-          field={dna.use}
-          fieldKey="use"
-          size="sm"
-          editable={editable}
-          onChange={handleFieldChange}
-        />
+        {isPreview ? (
+          <>
+            <BandFieldDisplay
+              label={dnaLabels.fabricName}
+              field={dna.fabricName}
+            />
+            <BandFieldDisplay
+              label={dnaLabels.use}
+              field={dna.use}
+              size="sm"
+            />
+          </>
+        ) : (
+          <>
+            <EditableBandField
+              label={dnaLabels.fabricName}
+              field={dna.fabricName}
+              fieldKey="fabricName"
+              editable={editable}
+              onChange={handleFieldChange}
+            />
+            <EditableBandField
+              label={dnaLabels.use}
+              field={dna.use}
+              fieldKey="use"
+              size="sm"
+              editable={editable}
+              onChange={handleFieldChange}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Spec Fields Grid（10 个规格字段）── */}
       <div className="dna-id-fields">
         {specs.map(([key, field]) => (
-          <EditableSpecField
-            key={key}
-            label={dnaLabels[key]}
-            field={field}
-            fieldKey={key}
-            editable={editable}
-            onChange={handleFieldChange}
-          />
+          isPreview ? (
+            <SpecFieldDisplay
+              key={key}
+              label={dnaLabels[key]}
+              field={field}
+            />
+          ) : (
+            <EditableSpecField
+              key={key}
+              label={dnaLabels[key]}
+              field={field}
+              fieldKey={key}
+              editable={editable}
+              onChange={handleFieldChange}
+            />
+          )
         ))}
       </div>
     </div>

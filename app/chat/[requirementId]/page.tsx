@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
 import type { Conversation, Message } from "@/app/lib/supabase/conversations";
 import { apiGet, apiPost, apiPut } from "@/app/lib/api-client";
@@ -12,23 +12,50 @@ import styles from "../chat.module.css";
 
 type ChatRole = "buyer" | "supplier";
 
-/* ---- 从 specs 解析精简规格 ---- */
+type ChatInitResponse = {
+  success: boolean;
+  conversation?: Conversation;
+  messages?: Message[];
+  token?: string;
+  role?: ChatRole;
+  error?: string;
+};
+
+const pendingCreates = new Map<string, Promise<ChatInitResponse>>();
+
+function createConversationOnce(
+  requirementId: string,
+  intent: ChatRole
+): Promise<ChatInitResponse> {
+  const key = `${requirementId}:${intent}`;
+  const existing = pendingCreates.get(key);
+  if (existing) return existing;
+  const request = apiPost<ChatInitResponse>("/api/bunana/conversations", {
+    action: "create",
+    requirementId,
+    intent,
+  });
+  pendingCreates.set(key, request);
+  request.finally(() => pendingCreates.delete(key));
+  return request;
+}
+
 function parseSpecsBrief(specs: string): string[] {
   return parseSpecsValues(specs).slice(0, 6);
 }
 
-/* ---- 角色标签 ---- */
 function getRoleLabel(role: string, t: (path: string) => string): string {
   if (role === "buyer") return t("chat.roleBuyer");
   if (role === "supplier") return t("chat.roleSupplier");
   return t("chat.roleSystem");
 }
 
-/* ---- 格式化时间 ---- */
 function formatTime(iso: string, dateLocale: string): string {
   try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleTimeString(dateLocale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return "";
   }
@@ -36,13 +63,16 @@ function formatTime(iso: string, dateLocale: string): string {
 
 export default function ChatPage() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { t, locale } = useI18n();
   const requirementId = params.requirementId as string;
-  const role = (searchParams.get("role") ?? "buyer") as ChatRole;
+  const intent = (searchParams.get("intent") ?? searchParams.get("role") ?? "buyer") as ChatRole;
+  const requestedConversationId = searchParams.get("conversation") ?? "";
 
   const [requirement, setRequirement] = useState<RequirementRow | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [participantToken, setParticipantToken] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,73 +81,126 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* 初始化：加载需求 + 创建/获取聊天 */
   useEffect(() => {
     let cancelled = false;
+
     async function init() {
       try {
-        // 加载需求详情
-        const reqData = await apiGet<{ success: boolean; requirement: RequirementRow | null; error?: string }>(
-          `/api/bunana/requirements?id=${encodeURIComponent(requirementId)}`
-        );
+        const reqData = await apiGet<{
+          success: boolean;
+          requirement: RequirementRow | null;
+          error?: string;
+        }>(`/api/bunana/requirements?id=${encodeURIComponent(requirementId)}`);
         if (cancelled) return;
         if (!reqData.success || !reqData.requirement) {
           setError(t("chat.notExist"));
-          setLoading(false);
           return;
         }
         setRequirement(reqData.requirement);
 
-        // 初始化聊天
-        const chatData = await apiPost<{ success: boolean; conversation?: Conversation; messages?: Message[]; error?: string }>(
-          "/api/bunana/conversations",
-          { requirementId, role, locale }
-        );
+        const storedToken = requestedConversationId
+          ? localStorage.getItem(`bunana-chat-token:${requestedConversationId}`) ?? ""
+          : "";
+        const action = requestedConversationId
+          ? (storedToken ? "read" : "claim")
+          : "create";
+        const chatData = action === "create"
+          ? await createConversationOnce(requirementId, intent)
+          : await apiPost<ChatInitResponse>("/api/bunana/conversations", {
+              action,
+              requirementId,
+              conversationId: requestedConversationId,
+              intent,
+              token: storedToken,
+            });
         if (cancelled) return;
-        if (!chatData.success) {
+        if (!chatData.success || !chatData.conversation) {
           setError(chatData.error ?? t("chat.initFailed"));
-          setLoading(false);
           return;
         }
+
+        const resolvedToken = chatData.token ?? storedToken;
+        if (!resolvedToken) {
+          setError("Unauthorized");
+          return;
+        }
+        localStorage.setItem(
+          `bunana-chat-token:${chatData.conversation.id}`,
+          resolvedToken
+        );
         setConversation(chatData.conversation);
         setMessages(chatData.messages ?? []);
+        setParticipantToken(resolvedToken);
+        if (!requestedConversationId) {
+          const joinIntent: ChatRole = intent === "buyer" ? "supplier" : "buyer";
+          router.replace(
+            `/chat/${requirementId}?conversation=${encodeURIComponent(chatData.conversation.id)}&intent=${joinIntent}`
+          );
+        }
       } catch {
         if (!cancelled) setError(t("chat.networkError"));
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     init();
     return () => {
       cancelled = true;
     };
-  }, [requirementId, role]);
+  }, [intent, requestedConversationId, requirementId, router, t]);
 
-  /* 自动滚动到底部 */
+  useEffect(() => {
+    if (!conversation || !participantToken) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const data = await apiPost<{
+          success: boolean;
+          messages?: Message[];
+        }>("/api/bunana/conversations", {
+          action: "read",
+          requirementId,
+          conversationId: conversation.id,
+          token: participantToken,
+        });
+        if (!cancelled && data.success) {
+          setMessages(data.messages ?? []);
+        }
+      } catch {
+        // A transient polling failure is retried on the next interval.
+      }
+    };
+    const timer = window.setInterval(poll, 4000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [conversation, participantToken, requirementId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* 发送消息 */
   const handleSend = useCallback(async () => {
     const text = input.trim();
-    if (!text || !conversation || sending) return;
+    if (!text || text.length > 5000 || !conversation || !participantToken || sending) return;
 
     setSending(true);
     setInput("");
-
     try {
-      const data = await apiPut<{ success: boolean; message?: Message; messages?: Message[]; error?: string }>(
-        "/api/bunana/conversations",
-        {
-          conversationId: conversation.id,
-          sender: role,
-          content: text,
-        }
-      );
+      const data = await apiPut<{
+        success: boolean;
+        messages?: Message[];
+        error?: string;
+      }>("/api/bunana/conversations", {
+        conversationId: conversation.id,
+        token: participantToken,
+        content: text,
+      });
       if (!data.success) {
         setError(data.error ?? t("chat.sendFailed"));
-        setInput(text); // 恢复输入
+        setInput(text);
         return;
       }
       setMessages(data.messages ?? []);
@@ -129,38 +212,25 @@ export default function ChatPage() {
       setSending(false);
       inputRef.current?.focus();
     }
-  }, [input, conversation, sending, role]);
+  }, [conversation, input, participantToken, sending, t]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    },
-    [handleSend]
-  );
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
 
-  /* ---- Loading ---- */
   if (loading) {
-    return (
-      <main className={styles.chatPage}>
-        <div className={styles.chatLoading}>
-          <span>{t("chat.entering")}</span>
-        </div>
-      </main>
-    );
+    return <main className={styles.chatPage}><div className={styles.chatLoading}><span>{t("chat.entering")}</span></div></main>;
   }
 
-  /* ---- Error ---- */
-  if (error && !requirement) {
+  if (error && (!requirement || !conversation)) {
     return (
       <main className={styles.chatPage}>
         <div className={styles.chatError}>
           <div className="error-banner">{error}</div>
-          <Link href="/square" className="btn-weave-outline">
-            {t("chat.backToSquare")}
-          </Link>
+          <Link href="/square" className="btn-weave-outline">{t("chat.backToSquare")}</Link>
         </div>
       </main>
     );
@@ -170,56 +240,33 @@ export default function ChatPage() {
 
   return (
     <main className={styles.chatPage}>
-      {/* Header: Fabric DNA 摘要 */}
       <header className={styles.chatHeader}>
-        <Link href={`/square/${requirementId}`} className={styles.chatBack}>
-          {t("chat.backToDetail")}
-        </Link>
+        <Link href={`/square/${requirementId}`} className={styles.chatBack}>{t("chat.backToDetail")}</Link>
         <div className={styles.chatDnaBar}>
           <span className={styles.chatDnaBadge}>{t("dnaCard.title")}</span>
-          <h1 className={styles.chatFabricName}>
-            {requirement?.fabricName || t("chat.unnamedFabric")}
-          </h1>
+          <h1 className={styles.chatFabricName}>{requirement?.fabricName || t("chat.unnamedFabric")}</h1>
         </div>
         {specsBrief.length > 0 && (
           <div className={styles.chatDnaSpecs}>
-            {specsBrief.map((s, i) => (
-              <span key={i} className={styles.chatDnaSpec}>
-                {s}
-              </span>
-            ))}
+            {specsBrief.map((spec, index) => <span key={index} className={styles.chatDnaSpec}>{spec}</span>)}
           </div>
         )}
       </header>
 
-      {/* Messages */}
       <div className={styles.chatMessages}>
-        {messages.length === 0 && (
-          <p className={styles.chatEmpty}>{t("chat.emptyMessages")}</p>
-        )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`${styles.msgRow} ${styles[msg.sender] || ""}`}
-          >
-            {msg.sender !== "system" && (
-              <span className={styles.msgSender}>
-                {getRoleLabel(msg.sender, t)}
-              </span>
-            )}
-            <div className={styles.msgBubble}>{msg.content}</div>
-            <span className={styles.msgMeta}>
-              {formatTime(msg.createdAt, LOCALE_TO_DATE[locale])}
-            </span>
+        {messages.length === 0 && <p className={styles.chatEmpty}>{t("chat.emptyMessages")}</p>}
+        {messages.map((message) => (
+          <div key={message.id} className={`${styles.msgRow} ${styles[message.sender] || ""}`}>
+            {message.sender !== "system" && <span className={styles.msgSender}>{getRoleLabel(message.sender, t)}</span>}
+            <div className={styles.msgBubble}>{message.content}</div>
+            <span className={styles.msgMeta}>{formatTime(message.createdAt, LOCALE_TO_DATE[locale])}</span>
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Error banner */}
       {error && <div className="error-banner">{error}</div>}
 
-      {/* Input */}
       <div className={styles.chatInputArea}>
         <input
           ref={inputRef}
@@ -227,16 +274,13 @@ export default function ChatPage() {
           className={styles.chatInput}
           placeholder={t("chat.inputPlaceholder")}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(event) => setInput(event.target.value)}
           onKeyDown={handleKeyDown}
           disabled={sending}
+          maxLength={5000}
           autoFocus
         />
-        <button
-          className={styles.chatSendBtn}
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-        >
+        <button className={styles.chatSendBtn} onClick={handleSend} disabled={!input.trim() || sending}>
           {sending ? t("chat.sending") : t("chat.send")}
         </button>
       </div>

@@ -35,6 +35,14 @@ const zh: Dict = {
     emptyHint: "上传布样或描述需求后开始织卡",
     aiOrganizing: "AI 自动整理中",
     dnaFields: ["成分", "织法", "克重", "幅宽", "涂层", "防水", "起订量", "交期", "颜色", "特性"],
+    postType: {
+      label: "选择本帖类型",
+      seeking: "找布",
+      seekingDesc: "我在找这种面料",
+      offering: "有布",
+      offeringDesc: "我有这种面料",
+      required: "请先选择本帖类型（找布 / 有布）",
+    },
   },
   dna: {
     fabricName: "面料名称",
@@ -89,6 +97,8 @@ const zh: Dict = {
     imageAlt: "上传的面料图样",
     editLabel: "编辑{label}",
     clickToEdit: "点击编辑{label}",
+    editMode: "编辑",
+    previewMode: "预览",
   },
   square: {
     title: "Fabric DNA 数据库",
@@ -107,6 +117,10 @@ const zh: Dict = {
     unnamedFabric: "未命名面料",
     needFabric: "我需要这个面料",
     haveFabric: "我有这个面料",
+    postTypeSeeking: "找布",
+    postTypeOffering: "有布",
+    replyForSeeking: "我有这个面料",  // 发布者是找布时，看的人点这个按钮来供货
+    replyForOffering: "我需要这个面料", // 发布者是有布时，看的人点这个按钮来求购
   },
   squareDetail: {
     specLabel: "规格",
@@ -123,6 +137,10 @@ const zh: Dict = {
     publishedAt: "发布于",
     needFabric: "我需要这个面料",
     haveFabric: "我有这个面料",
+    postTypeSeeking: "找布",
+    postTypeOffering: "有布",
+    replyForSeeking: "我有这个面料",
+    replyForOffering: "我需要这个面料",
   },
   chat: {
     roleBuyer: "需求方",
@@ -165,6 +183,14 @@ const en: Dict = {
     emptyHint: "Upload a fabric photo or describe your needs to start",
     aiOrganizing: "AI auto-organizing",
     dnaFields: ["Composition", "Weave", "Weight", "Width", "Coating", "Waterproof", "MOQ", "Lead Time", "Color", "Features"],
+    postType: {
+      label: "Select post type",
+      seeking: "Looking for fabric",
+      seekingDesc: "I need this fabric",
+      offering: "Offering fabric",
+      offeringDesc: "I have this fabric",
+      required: "Please select a post type (Looking for / Offering)",
+    },
   },
   dna: {
     fabricName: "Fabric Name",
@@ -219,6 +245,8 @@ const en: Dict = {
     imageAlt: "Uploaded fabric sample",
     editLabel: "Edit {label}",
     clickToEdit: "Click to edit {label}",
+    editMode: "Edit",
+    previewMode: "Preview",
   },
   square: {
     title: "Fabric DNA Database",
@@ -237,6 +265,10 @@ const en: Dict = {
     unnamedFabric: "Unnamed Fabric",
     needFabric: "I need this fabric",
     haveFabric: "I have this fabric",
+    postTypeSeeking: "Looking",
+    postTypeOffering: "Offering",
+    replyForSeeking: "I have this fabric",
+    replyForOffering: "I need this fabric",
   },
   squareDetail: {
     specLabel: "Spec",
@@ -253,6 +285,10 @@ const en: Dict = {
     publishedAt: "Published",
     needFabric: "I need this fabric",
     haveFabric: "I have this fabric",
+    postTypeSeeking: "Looking",
+    postTypeOffering: "Offering",
+    replyForSeeking: "I have this fabric",
+    replyForOffering: "I need this fabric",
   },
   chat: {
     roleBuyer: "Buyer",
@@ -295,6 +331,14 @@ const ja: Dict = {
     emptyHint: "生地写真をアップロードするか、需求を記述して開始",
     aiOrganizing: "AI自動整理中",
     dnaFields: ["成分", "織り方", "目付", "巾", "コーティング", "防水", "最小ロット", "納期", "色", "特徴"],
+    postType: {
+      label: "投稿タイプを選択",
+      seeking: "生地を探す",
+      seekingDesc: "この生地が必要です",
+      offering: "生地を提供",
+      offeringDesc: "この生地を持っています",
+      required: "投稿タイプ（探す / 提供）を選択してください",
+    },
   },
   dna: {
     fabricName: "生地名",
@@ -349,6 +393,8 @@ const ja: Dict = {
     imageAlt: "アップロードされた生地サンプル",
     editLabel: "{label}を編集",
     clickToEdit: "クリックして{label}を編集",
+    editMode: "編集",
+    previewMode: "プレビュー",
   },
   square: {
     title: "Fabric DNAデータベース",
@@ -367,6 +413,10 @@ const ja: Dict = {
     unnamedFabric: "名前なし生地",
     needFabric: "この生地が必要",
     haveFabric: "この生地があります",
+    postTypeSeeking: "探す",
+    postTypeOffering: "提供",
+    replyForSeeking: "この生地があります",
+    replyForOffering: "この生地が必要",
   },
   squareDetail: {
     specLabel: "スペック",
@@ -383,6 +433,10 @@ const ja: Dict = {
     publishedAt: "公開日",
     needFabric: "この生地が必要",
     haveFabric: "この生地があります",
+    postTypeSeeking: "探す",
+    postTypeOffering: "提供",
+    replyForSeeking: "この生地があります",
+    replyForOffering: "この生地が必要",
   },
   chat: {
     roleBuyer: "買い手",
@@ -425,6 +479,14 @@ const ko: Dict = {
     emptyHint: "원단 사진을 업로드하거나 요구사항을 입력하여 시작",
     aiOrganizing: "AI 자동 정리 중",
     dnaFields: ["성분", "직조법", "중량", "폭", "코팅", "방수", "최소주문량", "납기", "색상", "특징"],
+    postType: {
+      label: "게시 유형 선택",
+      seeking: "원단 찾기",
+      seekingDesc: "이 원단이 필요합니다",
+      offering: "원단 보유",
+      offeringDesc: "이 원단을 보유 중",
+      required: "게시 유형(찾기 / 보유)을 선택해주세요",
+    },
   },
   dna: {
     fabricName: "원단명",
@@ -479,6 +541,8 @@ const ko: Dict = {
     imageAlt: "업로드된 원단 샘플",
     editLabel: "{label} 편집",
     clickToEdit: "클릭하여 {label} 편집",
+    editMode: "편집",
+    previewMode: "미리보기",
   },
   square: {
     title: "Fabric DNA 데이터베이스",
@@ -497,6 +561,10 @@ const ko: Dict = {
     unnamedFabric: "이름 없는 원단",
     needFabric: "이 원단이 필요합니다",
     haveFabric: "이 원단이 있습니다",
+    postTypeSeeking: "찾기",
+    postTypeOffering: "보유",
+    replyForSeeking: "이 원단이 있습니다",
+    replyForOffering: "이 원단이 필요합니다",
   },
   squareDetail: {
     specLabel: "스펙",
@@ -513,6 +581,10 @@ const ko: Dict = {
     publishedAt: "게시일",
     needFabric: "이 원단이 필요합니다",
     haveFabric: "이 원단이 있습니다",
+    postTypeSeeking: "찾기",
+    postTypeOffering: "보유",
+    replyForSeeking: "이 원단이 있습니다",
+    replyForOffering: "이 원단이 필요합니다",
   },
   chat: {
     roleBuyer: "구매자",

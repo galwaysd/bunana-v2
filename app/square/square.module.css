@@ -166,7 +166,7 @@
   transform: scale(1.03);
 }
 
-/* DNA badge overlay on image */
+/* DNA badge overlay on image (top-right) */
 .cardDnaBadge {
   position: absolute;
   top: 10px;
@@ -181,6 +181,30 @@
   border-radius: 4px;
   padding: 3px 8px;
   text-transform: uppercase;
+}
+
+/* Post-Type badge (top-left) — 找布 / 有布 */
+.cardPostTypeBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 4px 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.cardPostTypeSeeking {
+  background: #d9822b;
+  color: #fff;
+}
+
+.cardPostTypeOffering {
+  background: #355c45;
+  color: #fff;
 }
 
 /* No-image placeholder */
@@ -521,4 +545,35 @@
 
 .detailHaveBtn:hover {
   background: #c4721f;
+}
+
+/* ----- Detail page: Post-Type badge (top-left of body header) ----- */
+.detailHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.detailPostTypeBadge {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+.detailPostTypeSeeking {
+  background: #fff3e0;
+  color: #b6671d;
+  border: 1px solid #d9822b;
+}
+
+.detailPostTypeOffering {
+  background: #ecf3ee;
+  color: #2a4a37;
+  border: 1px solid #355c45;
 }

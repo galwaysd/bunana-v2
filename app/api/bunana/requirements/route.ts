@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/supabase/requirements";
+import type { PostType } from "@/app/lib/supabase/requirements";
 import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
 import type { ImagePayload, FabricDNA } from "@/app/types";
 import { buildSpecsFromDNA } from "@/app/lib/dna";
@@ -32,6 +33,10 @@ export async function POST(request: NextRequest) {
     if (!text) {
       return NextResponse.json({ success: false, error: "需求文本不能为空。" }, { status: 400, headers: secureCorsHeaders(origin) });
     }
+
+    // post_type: 必填，只能是 seeking（找布）/ offering（有布）
+    const postTypeRaw = body.postType ?? body.post_type;
+    const postType: PostType = postTypeRaw === "offering" ? "offering" : "seeking";
 
     const dna: FabricDNA | undefined = body.dna;
     if (!dna) {
@@ -72,6 +77,7 @@ export async function POST(request: NextRequest) {
       category: fabricName,
       fabricName,
       specs,
+      postType,
       keywords: [...new Set(keywords)].filter(Boolean).slice(0, 10),
       summary: (() => {
         const parts = ["Fabric DNA 已构建完成。"];

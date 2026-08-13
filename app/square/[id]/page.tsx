@@ -97,6 +97,8 @@ export default function SquareDetailPage() {
     router.push(`/chat/${item.id}?role=supplier`);
   };
 
+  const isSeeking = item ? item.postType === "seeking" : true;
+
   if (loading) {
     return (
       <main className={styles.detailPage}>
@@ -162,12 +164,21 @@ export default function SquareDetailPage() {
         )}
 
         <div className={styles.detailBody}>
-          {/* Header: name + DNA badge */}
+          {/* Header: name + postType badge (top-left intent + DNA tag right) */}
           <div className={styles.detailHeader}>
             <h1 className={styles.detailName}>
               {item.fabricName || t("squareDetail.unnamedFabric")}
             </h1>
-            <span className={styles.detailDnaBadge}>{t("dnaCard.title")}</span>
+            <div className={styles.detailHeaderRight}>
+              <span
+                className={`${styles.detailPostTypeBadge} ${
+                  isSeeking ? styles.detailPostTypeSeeking : styles.detailPostTypeOffering
+                }`}
+              >
+                {t(isSeeking ? "squareDetail.postTypeSeeking" : "squareDetail.postTypeOffering")}
+              </span>
+              <span className={styles.detailDnaBadge}>{t("dnaCard.title")}</span>
+            </div>
           </div>
 
           {/* Meta: provider + confirmed count */}
@@ -224,19 +235,18 @@ export default function SquareDetailPage() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className={styles.detailActions}>
         <button
           className={styles.detailNeedBtn}
           onClick={handleDemandIntent}
         >
-          {t("squareDetail.needFabric")}
+          {t("squareDetail.replyForOffering")}
         </button>
         <button
           className={styles.detailHaveBtn}
           onClick={handleSupplyIntent}
         >
-          {t("squareDetail.haveFabric")}
+          {t("squareDetail.replyForSeeking")}
         </button>
       </div>
     </main>

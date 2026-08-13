@@ -4,12 +4,15 @@
 import { supabaseSelect, supabaseWrite } from "./client";
 import type { ImageAsset } from "./images";
 
+export type PostType = "seeking" | "offering";
+
 export type RequirementRow = {
   id: string;
   text: string;
   category: string;
   fabricName: string;
   specs: string;
+  postType: PostType;
   keywords: string[];
   summary: string;
   confidence: number;
@@ -29,6 +32,7 @@ export type PublishInput = {
   category: string;
   fabricName: string;
   specs: string;
+  postType: PostType;
   keywords: string[];
   summary: string;
   confidence: number;
@@ -49,6 +53,7 @@ export async function insertRequirement(input: PublishInput): Promise<Requiremen
     category: input.category,
     fabric_name: input.fabricName,
     specs: input.specs,
+    post_type: input.postType,
     keywords: input.keywords,
     summary: input.summary,
     confidence: input.confidence,
@@ -92,6 +97,8 @@ function mapRequirement(row: Record<string, unknown>): RequirementRow {
     category: String(row.category ?? "其他面料"),
     fabricName: String(row.fabric_name ?? ""),
     specs: String(row.specs ?? ""),
+    postType:
+      row.post_type === "offering" ? "offering" : "seeking",
     keywords: Array.isArray(row.keywords) ? row.keywords.map(String) : [],
     summary: String(row.summary ?? ""),
     confidence: Number(row.confidence ?? 0),

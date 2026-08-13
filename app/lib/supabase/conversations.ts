@@ -11,6 +11,11 @@ export type Conversation = {
   createdAt: string;
 };
 
+export type ConversationAccess = Conversation & {
+  buyerTokenHash: string | null;
+  supplierTokenHash: string | null;
+};
+
 export type Message = {
   id: string;
   conversationId: string;
@@ -21,25 +26,48 @@ export type Message = {
 
 /* ----- CRUD ----- */
 
-export async function getOrCreateConversation(
-  requirementId: string
-): Promise<Conversation> {
-  // 查已有
-  const existing = await supabaseSelect<Record<string, unknown>>(
-    `conversations?select=*&requirement_id=eq.${encodeURIComponent(requirementId)}&limit=1`
-  );
-  if (existing.length > 0) return mapConversation(existing[0]);
-
-  // 创建
+export async function createConversation(
+  requirementId: string,
+  role: "buyer" | "supplier",
+  tokenHash: string
+): Promise<ConversationAccess> {
   const rows = await supabaseWrite<Record<string, unknown>[]>("conversations", {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ requirement_id: requirementId }),
+    body: JSON.stringify({
+      requirement_id: requirementId,
+      [`${role}_token_hash`]: tokenHash,
+    }),
   });
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("创建聊天房间失败。");
   }
-  return mapConversation(rows[0]);
+  return mapConversationAccess(rows[0]);
+}
+
+export async function getConversationAccess(
+  conversationId: string
+): Promise<ConversationAccess | null> {
+  const rows = await supabaseSelect<Record<string, unknown>>(
+    `conversations?select=*&id=eq.${encodeURIComponent(conversationId)}&limit=1`
+  );
+  return rows[0] ? mapConversationAccess(rows[0]) : null;
+}
+
+export async function claimConversationRole(
+  conversationId: string,
+  role: "buyer" | "supplier",
+  tokenHash: string
+): Promise<ConversationAccess | null> {
+  const rows = await supabaseWrite<Record<string, unknown>[]>(
+    `conversations?id=eq.${encodeURIComponent(conversationId)}&${role}_token_hash=is.null`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ [`${role}_token_hash`]: tokenHash }),
+    }
+  );
+  return Array.isArray(rows) && rows[0] ? mapConversationAccess(rows[0]) : null;
 }
 
 export async function getMessages(
@@ -79,6 +107,14 @@ function mapConversation(row: Record<string, unknown>): Conversation {
     id: String(row.id ?? ""),
     requirementId: String(row.requirement_id ?? ""),
     createdAt: String(row.created_at ?? ""),
+  };
+}
+
+function mapConversationAccess(row: Record<string, unknown>): ConversationAccess {
+  return {
+    ...mapConversation(row),
+    buyerTokenHash: row.buyer_token_hash ? String(row.buyer_token_hash) : null,
+    supplierTokenHash: row.supplier_token_hash ? String(row.supplier_token_hash) : null,
   };
 }
 

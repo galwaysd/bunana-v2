@@ -579,6 +579,81 @@ input:focus-visible {
   letter-spacing: 0.04em;
 }
 
+/* ----- Preview Mode Styles ----- */
+.dna-id-card.is-preview-mode {
+  /* No interactive styling in preview mode */
+}
+
+.dna-id-band-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: none;
+}
+
+.dna-id-band-display .dna-id-band-label {
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  width: auto;
+}
+
+.dna-id-band-display .dna-id-band-value {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: inherit;
+  transition: none;
+}
+
+.dna-id-band-display .dna-id-band-value.sm {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.dna-id-field-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px dotted var(--color-border);
+  cursor: inherit;
+}
+
+.dna-id-field-display .dna-id-field-label {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.dna-id-field-display .dna-id-field-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  cursor: inherit;
+  font-family: inherit;
+  text-align: left;
+  transition: none;
+}
+
 /* ========================================
    Buttons (shared)
    ======================================== */
@@ -647,6 +722,83 @@ input:focus-visible {
   font-size: 0.9rem;
   text-align: center;
   margin-top: var(--space-4);
+}
+
+/* ----- Post Type Selector (找布 / 有布) ----- */
+.post-type-selector {
+  margin-top: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+}
+
+.post-type-label {
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3, 12px);
+}
+
+.post-type-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3, 12px);
+}
+
+.post-type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  background: #fff;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  text-align: left;
+}
+
+.post-type-option:hover {
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+
+.post-type-title {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: 0.01em;
+}
+
+.post-type-desc {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+/* 找布 — 橙色（表示我在找该面料） */
+.post-type-option.post-type-seeking.is-active {
+  border-color: #d9822b;
+  background: linear-gradient(135deg, #fff7ec 0%, #fff 100%);
+  box-shadow: 0 2px 8px rgba(217, 130, 43, 0.18);
+}
+.post-type-option.post-type-seeking.is-active .post-type-title {
+  color: #b6671d;
+}
+
+/* 有布 — 绿色（表示我拥有该面料） */
+.post-type-option.post-type-offering.is-active {
+  border-color: #355c45;
+  background: linear-gradient(135deg, #f0f6f2 0%, #fff 100%);
+  box-shadow: 0 2px 8px rgba(53, 92, 69, 0.18);
+}
+.post-type-option.post-type-offering.is-active .post-type-title {
+  color: #2a4a37;
 }
 
 /* ========================================

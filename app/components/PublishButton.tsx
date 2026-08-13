@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import type { FabricDNA, ImagePayload } from "@/app/types";
+import type { PostType } from "@/app/lib/supabase/requirements";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/app/lib/api-client";
 import { useI18n } from "@/app/i18n";
@@ -11,9 +12,10 @@ type Props = {
   text: string;
   images: ImagePayload[];
   aiProvider: string;
+  postType: PostType | null;
 };
 
-export default function PublishButton({ dna, text, images, aiProvider }: Props) {
+export default function PublishButton({ dna, text, images, aiProvider, postType }: Props) {
   const { t } = useI18n();
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
@@ -21,6 +23,10 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
 
   const handlePublish = useCallback(async () => {
     if (publishing) return;
+    if (!postType) {
+      setError(t("home.postType.required"));
+      return;
+    }
 
     setPublishing(true);
     setError("");
@@ -28,7 +34,7 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
     try {
       const data = await apiPost<{ success: boolean; error?: string }>(
         "/api/bunana/requirements",
-        { text, dna, images, aiProvider }
+        { text, dna, images, aiProvider, postType }
       );
 
       if (!data.success) {
@@ -44,13 +50,15 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
     } finally {
       setPublishing(false);
     }
-  }, [publishing, dna, text, images, aiProvider, router, t]);
+  }, [publishing, dna, text, images, aiProvider, postType, router, t]);
+
+  const disabled = publishing || !postType;
 
   return (
     <div style={{ marginTop: "0.75rem" }}>
       <button
         onClick={handlePublish}
-        disabled={publishing}
+        disabled={disabled}
         style={{
           width: "100%",
           padding: "0.75rem",
@@ -58,10 +66,11 @@ export default function PublishButton({ dna, text, images, aiProvider }: Props) 
           borderRadius: "8px",
           fontSize: "1rem",
           fontWeight: 600,
-          cursor: publishing ? "wait" : "pointer",
-          background: publishing ? "#bbdefb" : "#1565c0",
+          cursor: disabled ? "not-allowed" : "pointer",
+          background: disabled ? "#cfd8dc" : "#1565c0",
           color: "#fff",
           transition: "background 0.2s",
+          opacity: disabled ? 0.6 : 1,
         }}
       >
         {publishing ? t("publish.publishing") : t("publish.publish")}

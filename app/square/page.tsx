@@ -237,6 +237,7 @@ export default function SquarePage() {
         {filteredItems.map((item) => {
           const useLabel = extractUseFromKeywords(item.keywords, item.fabricName);
           const features = extractFeaturesFromSpecs(item.specs);
+          const isSeeking = item.postType === "seeking";
 
           return (
             <Link
@@ -254,12 +255,28 @@ export default function SquarePage() {
                       (e.target as HTMLImageElement).style.display = "none";
                     }}
                   />
+                  {/* Top-left: Post Type (找布 / 有布) */}
+                  <span
+                    className={`${styles.cardPostTypeBadge} ${
+                      isSeeking ? styles.cardPostTypeSeeking : styles.cardPostTypeOffering
+                    }`}
+                  >
+                    {t(isSeeking ? "square.postTypeSeeking" : "square.postTypeOffering")}
+                  </span>
+                  {/* Top-right: FABRIC DNA */}
                   <span className={styles.cardDnaBadge}>{t("dnaCard.title")}</span>
                 </div>
               ) : (
                 <div className={styles.cardImagePlaceholder}>
                   <span className={styles.cardPlaceholderIcon}>🧵</span>
-                  <span className={styles.cardDnaBadge}>{t("dnaCard.title")}</span>
+                  {/* Top-left: Post Type (找布 / 有布) */}
+                  <span
+                    className={`${styles.cardPostTypeBadge} ${
+                      isSeeking ? styles.cardPostTypeSeeking : styles.cardPostTypeOffering
+                    }`}
+                  >
+                    {t(isSeeking ? "square.postTypeSeeking" : "square.postTypeOffering")}
+                  </span>
                 </div>
               )}
 
@@ -285,19 +302,22 @@ export default function SquarePage() {
                   </div>
                 )}
 
-                {/* Footer: action buttons */}
+                {/* Footer: single reply button based on postType
+                    - 发布者找布（seeking）→ 看的人点"我有这个面料"来供货（supplier）
+                    - 发布者有布（offering）→ 看的人点"我需要这个面料"来求购（buyer）
+                */}
                 <div className={styles.cardFooter}>
                   <button
                     className={styles.cardNeedBtn}
                     onClick={(e) => goChat(e, item.id, "buyer")}
                   >
-                    {t("square.needFabric")}
+                    {t("square.replyForOffering")}
                   </button>
                   <button
                     className={styles.cardHaveBtn}
                     onClick={(e) => goChat(e, item.id, "supplier")}
                   >
-                    {t("square.haveFabric")}
+                    {t("square.replyForSeeking")}
                   </button>
                 </div>
               </div>
