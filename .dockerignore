@@ -1,0 +1,14 @@
+.git
+.next
+node_modules
+.env*
+!.env.example
+docs
+scripts
+*.log
+.codex-*
+*.tmp
+*.temp
+screenshot*.png
+image.png
+test_regex.js
