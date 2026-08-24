@@ -73,6 +73,7 @@ export default function ChatPage() {
   const [requirement, setRequirement] = useState<RequirementRow | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [participantToken, setParticipantToken] = useState("");
+  const [participantRole, setParticipantRole] = useState<ChatRole | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -131,6 +132,7 @@ export default function ChatPage() {
         setConversation(chatData.conversation);
         setMessages(chatData.messages ?? []);
         setParticipantToken(resolvedToken);
+        setParticipantRole(chatData.role ?? null);
         if (!requestedConversationId) {
           const joinIntent: ChatRole = intent === "buyer" ? "supplier" : "buyer";
           router.replace(
@@ -255,13 +257,20 @@ export default function ChatPage() {
 
       <div className={styles.chatMessages}>
         {messages.length === 0 && <p className={styles.chatEmpty}>{t("chat.emptyMessages")}</p>}
-        {messages.map((message) => (
-          <div key={message.id} className={`${styles.msgRow} ${styles[message.sender] || ""}`}>
-            {message.sender !== "system" && <span className={styles.msgSender}>{getRoleLabel(message.sender, t)}</span>}
-            <div className={styles.msgBubble}>{message.content}</div>
-            <span className={styles.msgMeta}>{formatTime(message.createdAt, LOCALE_TO_DATE[locale])}</span>
-          </div>
-        ))}
+        {messages.map((message) => {
+          const messageSide = message.sender === "system"
+            ? ""
+            : message.sender === participantRole
+              ? styles.own
+              : styles.other;
+          return (
+            <div key={message.id} className={`${styles.msgRow} ${styles[message.sender] || ""} ${messageSide}`}>
+              {message.sender !== "system" && <span className={styles.msgSender}>{getRoleLabel(message.sender, t)}</span>}
+              <div className={styles.msgBubble}>{message.content}</div>
+              <span className={styles.msgMeta}>{formatTime(message.createdAt, LOCALE_TO_DATE[locale])}</span>
+            </div>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
