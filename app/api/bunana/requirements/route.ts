@@ -9,9 +9,65 @@ import { NextRequest, NextResponse } from "next/server";
 import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/supabase/requirements";
 import type { PostType } from "@/app/lib/supabase/requirements";
 import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
-import type { ImagePayload, FabricDNA } from "@/app/types";
-import { buildSpecsFromDNA } from "@/app/lib/dna";
+import type { ImagePayload, FabricDNA, FabricField } from "@/app/types";
+import { buildSpecsFromDNA, DNA_FIELD_KEYS } from "@/app/lib/dna";
 import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
+
+const VALID_FIELD_STATUSES = new Set<string>([
+  "identified",
+  "inferred",
+  "confirmed",
+  "missing",
+]);
+
+const VALID_FIELD_SOURCES = new Set<string>([
+  "image_analysis",
+  "text_extraction",
+  "inference",
+  "user_input",
+]);
+
+/**
+ * Validate and copy the published 14-field Fabric DNA without normalizing it.
+ * In particular, confirmed/user_input metadata must survive publication intact.
+ */
+function readPublishedFabricDNA(value: unknown): FabricDNA | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const source = value as Record<string, unknown>;
+  const dna = {} as FabricDNA;
+
+  for (const key of DNA_FIELD_KEYS) {
+    const rawField = source[key];
+    if (!rawField || typeof rawField !== "object" || Array.isArray(rawField)) {
+      return null;
+    }
+
+    const field = rawField as Record<string, unknown>;
+    if (
+      typeof field.value !== "string" ||
+      typeof field.status !== "string" ||
+      !VALID_FIELD_STATUSES.has(field.status) ||
+      typeof field.confidence !== "number" ||
+      !Number.isFinite(field.confidence) ||
+      field.confidence < 0 ||
+      field.confidence > 1 ||
+      typeof field.source !== "string" ||
+      !VALID_FIELD_SOURCES.has(field.source)
+    ) {
+      return null;
+    }
+
+    dna[key] = {
+      value: field.value,
+      status: field.status as FabricField["status"],
+      confidence: field.confidence,
+      source: field.source as FabricField["source"],
+    };
+  }
+
+  return dna;
+}
 
 // ===== POST: 发布需求（需认证） =====
 
@@ -29,18 +85,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Preserve the user's actual input. Image-only publishing stores an empty
+    // string here while display fields continue to be derived from Fabric DNA.
     const text: string = (body.text ?? "").trim();
-    if (!text) {
-      return NextResponse.json({ success: false, error: "需求文本不能为空。" }, { status: 400, headers: secureCorsHeaders(origin) });
-    }
 
     // post_type: 必填，只能是 seeking（找布）/ offering（有布）
     const postTypeRaw = body.postType ?? body.post_type;
     const postType: PostType = postTypeRaw === "offering" ? "offering" : "seeking";
 
-    const dna: FabricDNA | undefined = body.dna;
+    const dna = readPublishedFabricDNA(body.dna);
     if (!dna) {
-      return NextResponse.json({ success: false, error: "缺少 Fabric DNA。" }, { status: 400, headers: secureCorsHeaders(origin) });
+      return NextResponse.json({ success: false, error: "Fabric DNA 结构不完整。" }, { status: 400, headers: secureCorsHeaders(origin) });
     }
 
     const images: ImagePayload[] = Array.isArray(body.images) ? body.images : [];
@@ -94,6 +149,7 @@ export async function POST(request: NextRequest) {
       confidence: 0.85,
       imageAssets,
       aiProvider,
+      fabricDna: dna,
     });
 
     return NextResponse.json(

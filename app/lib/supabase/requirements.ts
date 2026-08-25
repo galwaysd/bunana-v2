@@ -3,6 +3,7 @@
  */
 import { supabaseSelect, supabaseWrite } from "./client";
 import type { ImageAsset } from "./images";
+import type { FabricDNA } from "@/app/types";
 
 export type PostType = "seeking" | "offering";
 
@@ -24,6 +25,7 @@ export type RequirementRow = {
     reused: boolean;
   }>;
   aiProvider: string;
+  fabricDna: FabricDNA | null;
   createdAt: string;
 };
 
@@ -38,6 +40,7 @@ export type PublishInput = {
   confidence: number;
   imageAssets: ImageAsset[];
   aiProvider: string;
+  fabricDna: FabricDNA;
 };
 
 export async function insertRequirement(input: PublishInput): Promise<RequirementRow> {
@@ -60,6 +63,7 @@ export async function insertRequirement(input: PublishInput): Promise<Requiremen
     image_ids: input.imageAssets.map((a) => a.id),
     images,
     ai_provider: input.aiProvider,
+    fabric_dna: input.fabricDna,
   };
 
   const rows = await supabaseWrite<Record<string, unknown>[]>("requirements", {
@@ -112,6 +116,10 @@ function mapRequirement(row: Record<string, unknown>): RequirementRow {
         }))
       : [],
     aiProvider: String(row.ai_provider ?? ""),
+    fabricDna:
+      row.fabric_dna && typeof row.fabric_dna === "object" && !Array.isArray(row.fabric_dna)
+        ? (row.fabric_dna as FabricDNA)
+        : null,
     createdAt: String(row.created_at ?? ""),
   };
 }
