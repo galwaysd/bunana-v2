@@ -2,7 +2,10 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { FabricDNA, FollowUpQuestion } from "@/app/types";
-import { authHeaders } from "@/app/lib/api-client";
+import {
+  handleTestAccessRequired,
+  jsonHeaders,
+} from "@/app/lib/api-client";
 
 export type FollowUpState = {
   submitting: boolean;
@@ -17,6 +20,7 @@ type RefineResult = {
 
 type RefineResponsePayload = {
   success?: boolean;
+  code?: string;
   error?: string;
   dna?: FabricDNA;
   followUpQuestions?: FollowUpQuestion[];
@@ -67,7 +71,8 @@ export function useFollowUp() {
         try {
           res = await fetch("/api/bunana/analyze", {
             method: "POST",
-            headers: authHeaders(),
+            headers: jsonHeaders(),
+            credentials: "same-origin",
             body: JSON.stringify({
               mode: "refine",
               currentDNA,
@@ -110,6 +115,11 @@ export function useFollowUp() {
             submitting: false,
             error: `返回数据格式错误（HTTP ${res.status}）。`
           });
+          return null;
+        }
+
+        if (handleTestAccessRequired(res.status, data)) {
+          setState({ submitting: false, error: "" });
           return null;
         }
 

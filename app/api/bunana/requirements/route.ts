@@ -3,7 +3,7 @@
  * GET  /api/bunana/requirements — 获取广场列表（公开）
  *
  * V2 不做登录，所有记录 user_id = null。
- * 写操作需要 x-bunana-api-secret 认证头。
+ * 浏览器写操作使用测试访问 Cookie；服务端可使用兼容认证头。
  */
 import { NextRequest, NextResponse } from "next/server";
 import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/supabase/requirements";
@@ -11,7 +11,11 @@ import type { PostType } from "@/app/lib/supabase/requirements";
 import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
 import type { ImagePayload, FabricDNA, FabricField } from "@/app/types";
 import { buildSpecsFromDNA, DNA_FIELD_KEYS } from "@/app/lib/dna";
-import { validateApiSecret, secureCorsHeaders } from "@/app/lib/auth";
+import { secureCorsHeaders } from "@/app/lib/auth";
+import {
+  hasProtectedWriteAccess,
+  testAccessRequiredResponse,
+} from "@/app/lib/test-access";
 
 const VALID_FIELD_STATUSES = new Set<string>([
   "identified",
@@ -74,12 +78,9 @@ function readPublishedFabricDNA(value: unknown): FabricDNA | null {
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
 
-  // === 安全层: API 密钥认证 ===
-  if (!validateApiSecret(request)) {
-    return NextResponse.json(
-      { success: false, error: "未授权的请求。" },
-      { status: 401, headers: secureCorsHeaders(origin) }
-    );
+  // Signed browser cookie, with a configured server-only header as fallback.
+  if (!hasProtectedWriteAccess(request)) {
+    return testAccessRequiredResponse(request);
   }
 
   try {

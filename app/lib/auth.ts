@@ -1,8 +1,8 @@
 /**
  * Bunana API 认证工具
  *
- * 共享密钥认证 — 所有写 API 需要 x-bunana-api-secret 请求头。
- * 读 API 保持公开。
+ * Server-side compatibility authentication for trusted callers and debugging.
+ * Browser writes use the signed test-access cookie instead.
  */
 import { NextRequest } from "next/server";
 
@@ -27,6 +27,11 @@ export function validateApiSecret(request: NextRequest): boolean {
   }
   const headerValue = request.headers.get(AUTH_HEADER);
   return headerValue === secret;
+}
+
+/** Validate the legacy header only when its server-side secret is configured. */
+export function validateConfiguredApiSecret(request: NextRequest): boolean {
+  return hasApiSecret() && validateApiSecret(request);
 }
 
 /** CORS 头 — 严格白名单 */

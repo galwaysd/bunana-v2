@@ -1,58 +1,66 @@
 /**
- * 客户端 API 调用工具
+ * Same-origin browser API helpers.
  *
- * 自动为受保护的写操作添加 x-bunana-api-secret 认证头。
- * 密钥通过 NEXT_PUBLIC_BUNANA_API_SECRET 注入。
- *
- * 安全注意：
- * - 该密钥会被打包到客户端 JS 中，在浏览器 DevTools 可见
- * - 这阻止了外部网站/脚本的直接滥用，但无法防止有意的用户提取
- * - 配合速率限制和 RLS 策略，提供 MVP 阶段的基本防护
- * - 正式上线后建议迁移为 CSRF token 或用户登录认证
+ * Protected browser writes are authenticated by an HttpOnly test-access
+ * cookie. Client code must never read or transmit a public API secret.
  */
 
-const API_SECRET = process.env.NEXT_PUBLIC_BUNANA_API_SECRET ?? "";
-
-/** 返回需要认证的请求头 */
-export function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  const headers: Record<string, string> = {
+export function jsonHeaders(
+  extra?: Record<string, string>
+): Record<string, string> {
+  return {
     "Content-Type": "application/json",
     ...extra,
   };
-  if (API_SECRET) {
-    headers["x-bunana-api-secret"] = API_SECRET;
-  }
-  return headers;
 }
 
-/** 带认证的 POST 请求 */
+type ApiErrorPayload = { code?: string };
+
+export function handleTestAccessRequired(
+  status: number,
+  payload: ApiErrorPayload
+): boolean {
+  if (status !== 401 || payload.code !== "TEST_ACCESS_REQUIRED") return false;
+  if (typeof window === "undefined") return true;
+
+  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.assign(`/enter?returnTo=${encodeURIComponent(returnTo)}`);
+  return true;
+}
+
+async function readApiResponse<T>(response: Response): Promise<T> {
+  const payload = (await response.json()) as T & ApiErrorPayload;
+  handleTestAccessRequired(response.status, payload);
+  return payload;
+}
+
 export async function apiPost<T = unknown>(
   url: string,
   body: unknown
 ): Promise<T> {
-  const resp = await fetch(url, {
+  const response = await fetch(url, {
     method: "POST",
-    headers: authHeaders(),
+    headers: jsonHeaders(),
+    credentials: "same-origin",
     body: JSON.stringify(body),
   });
-  return resp.json();
+  return readApiResponse<T>(response);
 }
 
-/** 带认证的 PUT 请求 */
 export async function apiPut<T = unknown>(
   url: string,
   body: unknown
 ): Promise<T> {
-  const resp = await fetch(url, {
+  const response = await fetch(url, {
     method: "PUT",
-    headers: authHeaders(),
+    headers: jsonHeaders(),
+    credentials: "same-origin",
     body: JSON.stringify(body),
   });
-  return resp.json();
+  return readApiResponse<T>(response);
 }
 
-/** 公开 GET 请求（无需认证） */
 export async function apiGet<T = unknown>(url: string): Promise<T> {
-  const resp = await fetch(url);
-  return resp.json();
+  const response = await fetch(url, { credentials: "same-origin" });
+  return response.json();
 }

@@ -25,7 +25,11 @@ import {
   mergeDnaAnswer,
   normalizeDnaStatuses
 } from "@/app/lib/dna";
-import { validateApiSecret, unauthorizedResponse, secureCorsHeaders } from "@/app/lib/auth";
+import { secureCorsHeaders } from "@/app/lib/auth";
+import {
+  hasProtectedWriteAccess,
+  testAccessRequiredResponse,
+} from "@/app/lib/test-access";
 import { checkRateLimit, getClientIP, rateLimitResponse } from "@/app/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -48,12 +52,9 @@ export async function OPTIONS(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // === 安全层: API 密钥认证 ===
-  if (!validateApiSecret(request)) {
-    return NextResponse.json(
-      { success: false, error: "未授权的请求。" },
-      { status: 401, headers: secureCorsHeaders(request.headers.get("origin")) }
-    );
+  // Signed browser cookie, with a configured server-only header as fallback.
+  if (!hasProtectedWriteAccess(request)) {
+    return testAccessRequiredResponse(request);
   }
 
   // === 安全层: 速率限制 (每分钟 5 次) ===
