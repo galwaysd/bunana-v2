@@ -6,7 +6,7 @@ import TextInput from "./components/TextInput";
 import FabricDNACard from "./components/FabricDNACard";
 import type { CardMode } from "./components/FabricDNACard";
 import WeavingLoader from "./components/WeavingLoader";
-import SavePngButton from "./components/SavePngButton";
+import SavePngButton, { type SavePngHandle } from "./components/SavePngButton";
 import PublishButton from "./components/PublishButton";
 import { useAnalyze } from "./hooks/useAnalyze";
 import { useI18n } from "./i18n";
@@ -50,6 +50,11 @@ export default function Home() {
 
   // ----- Card ref (for PNG export) -----
   const cardRef = useRef<HTMLDivElement>(null);
+  const savePngRef = useRef<SavePngHandle>(null);
+
+  const handlePublishedSave = useCallback(async () => {
+    return savePngRef.current?.save() ?? false;
+  }, []);
 
   // ----- Hook -----
   const {
@@ -275,7 +280,8 @@ export default function Home() {
                 </div>
               </div>
 
-              <SavePngButton 
+              <SavePngButton
+                ref={savePngRef}
                 targetRef={cardRef} 
                 cardMode={cardMode}
                 onCardModeChange={setCardMode}
@@ -286,6 +292,7 @@ export default function Home() {
                 images={images}
                 aiProvider={aiProvider}
                 postType={postType}
+                onPublishSuccess={handlePublishedSave}
               />
             </>
           )}

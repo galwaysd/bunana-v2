@@ -276,13 +276,20 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
         >
           {images.map((image) => (
             <div className="dna-id-swatch" key={image.imageHash}>
-              <Image
+              {/* 本地 data URL 使用原生 img，确保 html-to-image 能稳定克隆像素。 */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={image.dataUrl}
                 alt={image.name || t("dnaCard.imageAlt")}
-                fill
-                unoptimized
-                sizes="(max-width: 768px) 100vw, 760px"
-                style={{ objectFit: "cover" }}
+                loading="eager"
+                decoding="sync"
+                draggable={false}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover"
+                }}
               />
             </div>
           ))}
