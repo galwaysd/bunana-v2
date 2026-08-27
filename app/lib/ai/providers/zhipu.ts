@@ -7,7 +7,7 @@
 import type { DemandResult, FabricDNA, FollowUpQuestion, ImagePayload } from "@/app/types";
 import { sanitizeDNA, sanitizeFollowUpQuestions, sanitizeDemandResult, parseMaybeJson } from "../normalize";
 import { buildInitialPrompt, buildRefinePrompt } from "@/app/lib/prompts";
-import { createEmptyDNA, DNA_FIELD_KEYS, fillDnaDefaults, mergeDnaAnswer, normalizeDnaStatuses } from "@/app/lib/dna";
+import { createEmptyDNA, DNA_FIELD_KEYS, mergeDnaAnswer, normalizeDnaStatuses } from "@/app/lib/dna";
 
 const aiRequestTimeoutMs = 45000;
 const maxImages = 3;
@@ -115,15 +115,22 @@ export async function runZhipuInitial(
   const content = extractChatContent(response).trim();
   const parsed = parseMaybeJson(content);
   const result = sanitizeDemandResult(parsed);
+  const hasStructuredDna =
+    parsed.dna &&
+    typeof parsed.dna === "object" &&
+    Object.keys(parsed.dna).length > 0;
 
-  if (!content || (!parsed.dna || typeof parsed.dna !== "object" || Object.keys(parsed.dna).length === 0)) {
+  if (hasStructuredDna) {
+    // Preserve the provider payload until the API layer can validate explicit-only
+    // fields against the original user text.
+    result.dna = sanitizeDNA(parsed.dna, true);
+  } else {
     const dna = buildStructuredDNAFromModelPayload(parsed, text);
     result.dna = dna;
   }
 
-  // 新流程：保留 AI 推断的所有字段值，不强制清空；再为 AI 漏掉的空字段填上行业默认值
+  // 保留有依据的 AI 推断；显式输入字段由 API 层的统一护栏最终校验。
   result.dna = normalizeDnaStatuses(result.dna, false, undefined, true);
-  result.dna = fillDnaDefaults(result.dna, text);
 
   return result;
 }

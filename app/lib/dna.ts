@@ -79,6 +79,72 @@ const EXPLICIT_INPUT_ONLY_FIELDS = new Set<keyof FabricDNA>([
   "leadTime"
 ]);
 
+const EXPLICIT_INPUT_EVIDENCE: Record<
+  "weightGsm" | "width" | "moq" | "quantity" | "destinationMarket" | "leadTime",
+  readonly RegExp[]
+> = {
+  weightGsm: [
+    /(?:克重|weight)\s*[:：]?\s*\d+(?:\.\d+)?\s*(?:gsm|g\s*[/／]\s*(?:m2|m²|㎡)|克(?:\s*[/／]\s*平方米)?)/i,
+    /\d+(?:\.\d+)?\s*(?:gsm|g\s*[/／]\s*(?:m2|m²|㎡)|克\s*[/／]\s*平方米)/i
+  ],
+  width: [
+    /(?:幅宽|门幅|width)\s*[:：]?\s*\d+(?:\.\d+)?\s*(?:cm|厘米|m|米|inch|inches|英寸)/i,
+    /\d+(?:\.\d+)?\s*(?:cm|厘米|m|米|inch|inches|英寸)\s*(?:幅宽|门幅|宽)/i
+  ],
+  moq: [
+    /(?:moq|起订(?:量)?|最小(?:订单|订购量|起订量))\s*[:：]?\s*\d+(?:\.\d+)?\s*(?:米|码|件|公斤|kg|yards?|pcs?)?/i
+  ],
+  quantity: [
+    /(?:数量|采购量|需求量|米数|码数|件数)\s*[:：]?\s*\d+(?:\.\d+)?\s*(?:米|码|件|公斤|kg|yards?|pcs?)?/i
+  ],
+  destinationMarket: [
+    /(?:目标市场|目的市场|destination\s*market|market)\s*[:：]?\s*[\p{L}][\p{L}\s-]*/iu,
+    /(?:出口|销往|发往)\s*[:：]?\s*[\p{L}][\p{L}\s-]*/iu,
+    /(?:内销|国内市场)/i
+  ],
+  leadTime: [
+    /(?:交期|交货期|货期|交付周期|lead\s*time|delivery)\s*[:：]?\s*\d+(?:\.\d+)?\s*(?:天|日|周|星期|个月|月|days?|weeks?|months?)/i,
+    /\d+(?:\.\d+)?\s*(?:天|日|周|星期|个月|月|days?|weeks?|months?)\s*(?:交货|交付|出货|delivery)/i
+  ]
+};
+
+function hasExplicitInputEvidence(
+  key: keyof FabricDNA,
+  rawText: string
+): boolean {
+  if (!EXPLICIT_INPUT_ONLY_FIELDS.has(key)) return true;
+  const patterns = EXPLICIT_INPUT_EVIDENCE[key as keyof typeof EXPLICIT_INPUT_EVIDENCE];
+  return patterns.some((pattern) => pattern.test(rawText));
+}
+
+/**
+ * 清除只能由用户明确输入/确认、却被图片分析或模型推断生成的业务字段。
+ */
+export function enforceExplicitInputOnlyFields(
+  dna: FabricDNA,
+  rawText: string
+): FabricDNA {
+  const guarded = { ...dna };
+
+  for (const key of EXPLICIT_INPUT_ONLY_FIELDS) {
+    const field = dna[key];
+    const isConfirmedUserInput =
+      field.source === "user_input" && field.status === "confirmed";
+
+    if (isConfirmedUserInput) {
+      guarded[key] = field;
+      continue;
+    }
+
+    guarded[key] =
+      hasExplicitInputEvidence(key, rawText) && field.value.trim()
+        ? { ...field, source: "text_extraction" }
+        : createEmptyField();
+  }
+
+  return guarded;
+}
+
 const RELIABILITY_SENSITIVE_FIELDS = new Set<keyof FabricDNA>([
   "fabricName",
   "use",
@@ -136,48 +202,6 @@ export const DNA_FIELD_LABELS: Record<keyof FabricDNA, string> = {
   color: "颜色",
   features: "特性"
 };
-
-/**
- * 当 AI 未返回某字段值时，用行业通用默认值填充。
- * 保持字段格式 { value, status: "inferred", confidence: 0.5, source: "inference" }。
- */
-export function fillDnaDefaults(dna: FabricDNA, text: string = ""): FabricDNA {
-  const normalized = text.toLowerCase();
-  const hasKeyword = (kw: string | string[]) =>
-    Array.isArray(kw) ? kw.some((k) => normalized.includes(k.toLowerCase())) : normalized.includes(kw.toLowerCase());
-
-  const defaults: Record<keyof FabricDNA, string> = {
-    fabricName: "未命名面料",
-    use: "通用服装/用品",
-    composition: hasKeyword(["尼龙", "锦纶"]) ? "尼龙" : hasKeyword(["涤纶", "聚酯"]) ? "涤纶" : "按样",
-    weave: hasKeyword("牛津") ? "牛津" : hasKeyword("平纹") ? "平纹" : "平纹",
-    weightGsm: hasKeyword(["轻薄", "尼丝纺", "涤塔夫"]) ? "约80-100gsm" : hasKeyword("牛津") ? "约200gsm" : "约150gsm",
-    width: "约150cm",
-    coating: hasKeyword(["防水", "防泼水", "涂层"]) ? "PU涂层" : "无",
-    waterproof: hasKeyword(["防水", "防泼水"]) ? "防泼水" : "无",
-    moq: "1000米起",
-    quantity: "待定",
-    destinationMarket: "待定",
-    leadTime: "15-20天",
-    color: "按图片",
-    features: hasKeyword(["户外", "运动", "背包"]) ? "耐磨、户外适用" : "通用面料"
-  };
-
-  const next: FabricDNA = { ...dna };
-  for (const key of DNA_FIELD_KEYS) {
-    const field = dna[key];
-    const value = field.value.trim();
-    if (!value || value === "—" || value === "待确认" || value === "需确认") {
-      next[key] = {
-        value: defaults[key],
-        status: "inferred",
-        confidence: 0.5,
-        source: "inference"
-      };
-    }
-  }
-  return next;
-}
 
 /**
  * DNA → specs 字符串（结构化格式：key:value|key:value）

@@ -22,6 +22,7 @@ import { runDifyInitial, hasDifyApiKey } from "@/app/lib/ai/providers/dify";
 import { buildStructuredFollowUpQuestions, filterAnsweredQuestions } from "@/app/lib/ai/normalize";
 import {
   DNA_FIELD_KEYS,
+  enforceExplicitInputOnlyFields,
   mergeDnaAnswer,
   normalizeDnaStatuses
 } from "@/app/lib/dna";
@@ -166,6 +167,7 @@ async function handleInitial(body: BunanaAnalyzeRequest, request: NextRequest): 
   }
 
   result.dna = normalizeDnaStatuses(result.dna, false, undefined, /* keepInferences */ true);
+  result.dna = enforceExplicitInputOnlyFields(result.dna, text);
   // 新流程不再生成追问 — 用户直接在卡片上检查编辑
   result.followUpQuestions = [];
 

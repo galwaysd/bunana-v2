@@ -10,7 +10,7 @@ import { insertRequirement, listRequirements, getRequirementById } from "@/app/l
 import type { PostType } from "@/app/lib/supabase/requirements";
 import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
 import type { ImagePayload, FabricDNA, FabricField } from "@/app/types";
-import { buildSpecsFromDNA, DNA_FIELD_KEYS } from "@/app/lib/dna";
+import { buildSpecsFromDNA, DNA_FIELD_KEYS, enforceExplicitInputOnlyFields } from "@/app/lib/dna";
 import { secureCorsHeaders } from "@/app/lib/auth";
 import {
   hasProtectedWriteAccess,
@@ -94,10 +94,11 @@ export async function POST(request: NextRequest) {
     const postTypeRaw = body.postType ?? body.post_type;
     const postType: PostType = postTypeRaw === "offering" ? "offering" : "seeking";
 
-    const dna = readPublishedFabricDNA(body.dna);
-    if (!dna) {
+    const publishedDna = readPublishedFabricDNA(body.dna);
+    if (!publishedDna) {
       return NextResponse.json({ success: false, error: "Fabric DNA 结构不完整。" }, { status: 400, headers: secureCorsHeaders(origin) });
     }
+    const dna = enforceExplicitInputOnlyFields(publishedDna, text);
 
     const images: ImagePayload[] = Array.isArray(body.images) ? body.images : [];
     const aiProvider: string = body.aiProvider ?? "zhipu";

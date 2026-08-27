@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import type { RequirementRow } from "@/app/lib/supabase/requirements";
-import { parseSpecsValues } from "@/app/lib/dna";
+import { DNA_FIELD_KEYS } from "@/app/lib/dna";
 import { useI18n, LOCALE_TO_DATE } from "@/app/i18n";
 import styles from "../square.module.css";
 
@@ -43,12 +43,10 @@ function parseSpecsIntoGrid(
     .map((s) => ({ label: specLabel, value: s }));
 }
 
-function estimateConfirmedCount(item: RequirementRow): number {
-  const meaningfulKeywords = item.keywords.filter(
-    (kw) => kw !== item.fabricName && kw.length > 0
-  );
-  const specParts = parseSpecsValues(item.specs);
-  return meaningfulKeywords.length + specParts.length;
+function countConfirmedFields(item: RequirementRow): number {
+  const dna = item.fabricDna;
+  if (!dna) return 0;
+  return DNA_FIELD_KEYS.filter((key) => dna[key].status === "confirmed").length;
 }
 
 export default function SquareDetailPage() {
@@ -123,7 +121,7 @@ export default function SquareDetailPage() {
   }
 
   const specsGrid = parseSpecsIntoGrid(item.specs, t("squareDetail.specLabel"), t);
-  const confirmedCount = estimateConfirmedCount(item);
+  const confirmedCount = countConfirmedFields(item);
 
   return (
     <main className={styles.detailPage}>
