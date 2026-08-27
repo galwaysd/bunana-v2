@@ -57,54 +57,23 @@ export default function ImageUploader({
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "0.5rem",
-        padding: "0.75rem",
-        border: "2px dashed #ddd",
-        borderRadius: "8px",
-        background: "#fafafa",
-        minHeight: "100px",
-        alignItems: "center"
-      }}
-    >
+    <div className={`image-uploader${images.length > 0 ? " has-images" : ""}`}>
       {images.map((img, i) => (
         <div
           key={`${img.imageHash}-${i}`}
-          style={{ position: "relative", width: 80, height: 80, flexShrink: 0 }}
+          className="image-uploader-preview"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={img.dataUrl}
             alt={img.name}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              borderRadius: "4px",
-              border: "1px solid #e0e0e0"
-            }}
+            className="image-uploader-preview-image"
           />
           <button
+            type="button"
             onClick={() => handleRemove(i)}
             disabled={disabled}
-            style={{
-              position: "absolute",
-              top: -6,
-              right: -6,
-              width: 20,
-              height: 20,
-              borderRadius: "50%",
-              border: "1px solid #ccc",
-              background: "#fff",
-              cursor: "pointer",
-              fontSize: "12px",
-              lineHeight: "18px",
-              textAlign: "center",
-              padding: 0
-            }}
+            className="image-uploader-remove"
             title={t("imageUploader.remove")}
           >
             ×
@@ -114,22 +83,11 @@ export default function ImageUploader({
 
       {remaining > 0 && (
         <label
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 80,
-            height: 80,
-            border: "2px dashed #ccc",
-            borderRadius: "4px",
-            cursor: disabled ? "not-allowed" : "pointer",
-            color: "#999",
-            fontSize: "28px",
-            opacity: disabled ? 0.4 : 1
-          }}
+          className={`image-uploader-add${disabled ? " is-disabled" : ""}`}
           title={t("imageUploader.uploadHint")}
         >
-          +
+          <span className="image-uploader-add-icon" aria-hidden="true">+</span>
+          <span className="image-uploader-add-label">{t("imageUploader.uploadAction")}</span>
           <input
             ref={inputRef}
             type="file"
@@ -143,7 +101,7 @@ export default function ImageUploader({
       )}
 
       {images.length === 0 && (
-        <span style={{ color: "#999", fontSize: "0.875rem" }}>
+        <span className="image-uploader-prompt">
           {t("imageUploader.uploadPrompt")}
         </span>
       )}

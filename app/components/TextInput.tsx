@@ -11,7 +11,7 @@ type Props = {
 export default function TextInput({ text, onTextChange, disabled }: Props) {
   const { t } = useI18n();
   return (
-    <div style={{ marginTop: "0.75rem" }}>
+    <div className="fabric-text-input">
       <textarea
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
@@ -19,23 +19,13 @@ export default function TextInput({ text, onTextChange, disabled }: Props) {
         disabled={disabled}
         maxLength={1200}
         rows={3}
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          border: "1px solid #ddd",
-          borderRadius: "8px",
-          fontSize: "0.95rem",
-          lineHeight: 1.6,
-          resize: "vertical",
-          fontFamily: "inherit",
-          background: "#fff"
-        }}
+        className="fabric-textarea"
       />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.25rem" }}>
-        <span style={{ color: "#999", fontSize: "0.75rem" }}>
+      <div className="fabric-text-input-meta">
+        <span>
           {t("textInput.helperText")}
         </span>
-        <span style={{ color: "#999", fontSize: "0.75rem" }}>
+        <span>
           {text.length}/1200
         </span>
       </div>

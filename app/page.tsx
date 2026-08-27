@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
 import ImageUploader from "./components/ImageUploader";
 import TextInput from "./components/TextInput";
 import FabricDNACard from "./components/FabricDNACard";
@@ -94,12 +95,30 @@ export default function Home() {
   const isSubmitDisabled = phase === "analyzing";
 
   return (
-    <div className="workbench-page">
-      <div className="workbench-body">
+    <div className="workbench-page" data-phase={phase}>
+      <section className="hero-intro" aria-labelledby="home-hero-title">
+        <span className="hero-kicker">{t("home.heroKicker")}</span>
+        <h2 id="home-hero-title">{t("home.heroTitle")}</h2>
+        <p>{t("home.heroSubtitle")}</p>
+        <span className="hero-thread" aria-hidden="true" />
+      </section>
 
-        {/* ======== Left: Input Panel ======== */}
-        <aside className="input-panel">
-          <div className="panel-label">{t("home.panelLabel")}</div>
+      <div className="workbench-body">
+        <article className="home-step home-step-primary">
+          <header className="home-step-heading">
+            <span aria-hidden="true" />
+            <div>
+              <h3>{t("home.editorial.recognition")}</h3>
+              <p>{t("home.editorial.recognitionCaption")}</p>
+            </div>
+          </header>
+
+          {/* ======== Real analysis entry — handlers and state stay unchanged ======== */}
+          <aside className="input-panel" data-analysis-label={t("home.analysisInput")}>
+          <div className="input-panel-heading">
+            <div className="panel-label">{t("home.panelLabel")}</div>
+            <span className="panel-step">{t("home.inputMode")}</span>
+          </div>
 
           <ImageUploader
             images={images}
@@ -137,7 +156,8 @@ export default function Home() {
               {t("home.reanalyze")}
             </button>
           )}
-        </aside>
+          </aside>
+        </article>
 
         {/* ======== Center: Weaving Channel ======== */}
         <div className={channelState(phase)}>
@@ -175,38 +195,20 @@ export default function Home() {
                 cardMode={cardMode}
               />
               {/* Toggle Button: Preview / Edit */}
-              <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+              <div className="card-mode-switch" role="group" aria-label={t("dnaCard.modeLabel")}>
                 <button
+                  type="button"
                   onClick={() => setCardMode("edit")}
-                  style={{
-                    flex: 1,
-                    padding: "0.5rem 1rem",
-                    border: cardMode === "edit" ? "2px solid var(--color-brand-500)" : "1px solid var(--color-border)",
-                    borderRadius: "6px",
-                    background: cardMode === "edit" ? "rgba(139, 115, 85, 0.1)" : "transparent",
-                    color: "var(--color-text-primary)",
-                    fontSize: "0.9rem",
-                    fontWeight: cardMode === "edit" ? 600 : 500,
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
+                  className={cardMode === "edit" ? "is-active" : ""}
+                  aria-pressed={cardMode === "edit"}
                 >
                   {t("dnaCard.editMode")}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setCardMode("preview")}
-                  style={{
-                    flex: 1,
-                    padding: "0.5rem 1rem",
-                    border: cardMode === "preview" ? "2px solid var(--color-brand-500)" : "1px solid var(--color-border)",
-                    borderRadius: "6px",
-                    background: cardMode === "preview" ? "rgba(139, 115, 85, 0.1)" : "transparent",
-                    color: "var(--color-text-primary)",
-                    fontSize: "0.9rem",
-                    fontWeight: cardMode === "preview" ? 600 : 500,
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
+                  className={cardMode === "preview" ? "is-active" : ""}
+                  aria-pressed={cardMode === "preview"}
                 >
                   {t("dnaCard.previewMode")}
                 </button>
@@ -298,6 +300,113 @@ export default function Home() {
           )}
 
         </section>
+
+        {phase === "idle" && (
+          <section
+            className="pyramid-base"
+            aria-label={t("home.pyramid.baseLabel")}
+            data-base-label={t("home.pyramid.capabilityBase")}
+          >
+            <article className="pyramid-panel pyramid-panel-dna">
+              <header className="pyramid-panel-heading">
+                <span className="pyramid-panel-index" aria-hidden="true" />
+                <div>
+                  <div className="pyramid-panel-title-row">
+                    <h3>{t("home.pyramid.dnaTitle")}</h3>
+                    <span>/ {t("home.pyramid.profile")}</span>
+                  </div>
+                  <p>{t("home.pyramid.dnaCaption")}</p>
+                </div>
+              </header>
+              <div className="pyramid-panel-visual pyramid-dna-archive">
+                <div className="pyramid-archive-card pyramid-archive-card-back pyramid-archive-card-back-one">
+                  <span>{t("home.pyramid.archiveCode", { index: "07" })}</span>
+                  <strong>{t("home.pyramid.archiveRecord")}</strong>
+                </div>
+                <div className="pyramid-archive-card pyramid-archive-card-back pyramid-archive-card-back-two">
+                  <span>{t("home.pyramid.archiveCode", { index: "11" })}</span>
+                  <strong>{t("home.pyramid.archiveRecord")}</strong>
+                </div>
+                <div className="pyramid-archive-card pyramid-archive-card-main">
+                  <div className="pyramid-archive-fabric" aria-hidden="true" />
+                  <div className="pyramid-archive-data">
+                    <span>{t("home.pyramid.myArchive")}</span>
+                    <strong>{t("home.editorial.fabricSample")}</strong>
+                    <small>{t("home.editorial.fabricComposition")} · {t("home.editorial.fabricWeave")}</small>
+                  </div>
+                </div>
+              </div>
+              <div className="pyramid-panel-meta">
+                <span>{t("home.pyramid.personalArchive")}</span>
+                <span>{t("home.pyramid.visualPreview")}</span>
+              </div>
+            </article>
+
+            <Link href="/square" className="pyramid-panel pyramid-panel-market">
+              <header className="pyramid-panel-heading">
+                <span className="pyramid-panel-index" aria-hidden="true" />
+                <div>
+                  <div className="pyramid-panel-title-row">
+                    <h3>{t("home.editorial.market")}</h3>
+                    <span>/ {t("home.pyramid.marketLabel")}</span>
+                  </div>
+                  <p>{t("home.pyramid.marketCaption")}</p>
+                </div>
+              </header>
+              <div className="pyramid-panel-visual pyramid-market-archive">
+                <div className="pyramid-market-fabric" aria-hidden="true" />
+                <div className="pyramid-market-sheet pyramid-market-sheet-seeking">
+                  <span>{t("square.postTypeSeeking")}</span>
+                  <strong>{t("home.editorial.marketSeeking")}</strong>
+                  <small>{t("home.pyramid.seekingDetail")}</small>
+                </div>
+                <div className="pyramid-market-sheet pyramid-market-sheet-offering">
+                  <span>{t("square.postTypeOffering")}</span>
+                  <strong>{t("home.editorial.marketOffering")}</strong>
+                  <small>{t("home.pyramid.offeringContact")}</small>
+                </div>
+              </div>
+              <div className="pyramid-panel-meta">
+                <span>{t("home.pyramid.marketArchive")}</span>
+                <span>{t("home.pyramid.openMarket")}</span>
+              </div>
+            </Link>
+
+            <article className="pyramid-panel pyramid-panel-chat">
+              <header className="pyramid-panel-heading">
+                <span className="pyramid-panel-index" aria-hidden="true" />
+                <div>
+                  <div className="pyramid-panel-title-row">
+                    <h3>{t("home.pyramid.chatTitle")}</h3>
+                    <span>/ {t("home.pyramid.chatLabel")}</span>
+                  </div>
+                  <p>{t("home.pyramid.chatCaption")}</p>
+                </div>
+              </header>
+              <div className="pyramid-panel-visual pyramid-chat-archive">
+                <div className="pyramid-chat-card pyramid-chat-card-back">
+                  <div>
+                    <span>{t("home.pyramid.buyer")}</span>
+                    <time>09:42</time>
+                  </div>
+                  <p>{t("home.pyramid.buyerMessage")}</p>
+                </div>
+                <div className="pyramid-chat-card pyramid-chat-card-main">
+                  <div>
+                    <span>{t("home.pyramid.supplier")}</span>
+                    <time>10:08</time>
+                  </div>
+                  <p>{t("home.pyramid.supplierMessage")}</p>
+                  <small>{t("home.pyramid.conversationPreview")}</small>
+                </div>
+              </div>
+              <div className="pyramid-panel-meta">
+                <span>{t("home.pyramid.conversationArchive")}</span>
+                <span>{t("home.pyramid.visualPreview")}</span>
+              </div>
+            </article>
+          </section>
+        )}
       </div>
 
       {/* ======== Bottom: Shuttle Track ======== */}
@@ -305,6 +414,13 @@ export default function Home() {
         <span className="shuttle-track-label">{t("home.aiOrganizing")}</span>
         <div className="shuttle-track-line" />
       </div>
+
+      {phase === "idle" && (
+        <footer className="home-footer">
+          <span>{t("home.pyramid.feedback")}</span>
+          <a href="mailto:aurelian8208@gmail.com">aurelian8208@gmail.com</a>
+        </footer>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { useI18n } from "@/app/i18n";
 import type { Locale } from "@/app/i18n/translations";
 
 const AUTO_SAVE_FAILED_MESSAGE: Record<Locale, string> = {
-  zh: "发布已成功，卡片未自动保存。请点击“保存 Fabric DNA”手动保存。",
+  zh: "发布已成功，卡片未自动保存。请点击“保存布料档案”手动保存。",
   en: "Published successfully, but the card was not saved automatically. Please use Save Fabric DNA to try again.",
   ja: "公開は完了しましたが、カードを自動保存できませんでした。「Fabric DNA を保存」から再試行してください。",
   ko: "게시는 완료되었지만 카드가 자동 저장되지 않았습니다. Fabric DNA 저장 버튼으로 다시 시도해 주세요."
@@ -97,23 +97,12 @@ export default function PublishButton({
   const disabled = publishing || published || !postType;
 
   return (
-    <div style={{ marginTop: "0.75rem" }}>
+    <div className="workbench-action workbench-action-primary">
       <button
+        type="button"
         onClick={handlePublish}
         disabled={disabled}
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          border: "none",
-          borderRadius: "8px",
-          fontSize: "1rem",
-          fontWeight: 600,
-          cursor: disabled ? "not-allowed" : "pointer",
-          background: disabled ? "#cfd8dc" : "#1565c0",
-          color: "#fff",
-          transition: "background 0.2s",
-          opacity: disabled ? 0.6 : 1,
-        }}
+        className="workbench-action-button"
       >
         {publishing
           ? t("publish.publishing")
@@ -124,31 +113,13 @@ export default function PublishButton({
       {notice && (
         <div
           role="status"
-          style={{
-            marginTop: "0.5rem",
-            padding: "0.5rem 0.75rem",
-            borderRadius: "6px",
-            background: "#fff8e1",
-            border: "1px solid #ffe082",
-            color: "#6d4c00",
-            fontSize: "0.85rem"
-          }}
+          className="workbench-action-message is-notice"
         >
           {notice}
         </div>
       )}
       {error && (
-        <div
-          style={{
-            marginTop: "0.5rem",
-            padding: "0.5rem 0.75rem",
-            borderRadius: "6px",
-            background: "#fff0f0",
-            border: "1px solid #ffcdd2",
-            color: "#c62828",
-            fontSize: "0.85rem",
-          }}
-        >
+        <div className="workbench-action-message is-error">
           {error}
         </div>
       )}

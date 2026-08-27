@@ -19,8 +19,27 @@ type Props = {
 /** 规格字段（excl. fabricName + use，它们在身份标识区独立展示） */
 const SPEC_FIELDS: (keyof FabricDNA)[] = [
   "composition", "weave", "weightGsm", "width", "coating",
-  "waterproof", "moq", "leadTime", "color", "features"
+  "waterproof", "moq", "quantity", "destinationMarket", "leadTime",
+  "color", "features"
 ];
+
+function FieldStatus({ field }: { field: FabricField }) {
+  const { t } = useI18n();
+  const isUserInput = field.source === "user_input";
+  const label = isUserInput ? t("status.userInput") : t(`status.${field.status}`);
+
+  return (
+    <span
+      className="dna-field-status"
+      data-status={field.status}
+      data-source={field.source}
+      title={label}
+    >
+      <span aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
 
 // ===== BandFieldDisplay — 面料名称 / 用途（identity band）展示模式 =====
 
@@ -37,8 +56,9 @@ function BandFieldDisplay({
     <div className="dna-id-band-row dna-id-band-display">
       <span className="dna-id-band-label">{label}</span>
       <span className={`dna-id-band-value ${size === "sm" ? "sm" : ""}`}>
-        {field.value}
+        {field.value || "—"}
       </span>
+      <FieldStatus field={field} />
     </div>
   );
 }
@@ -55,7 +75,8 @@ function SpecFieldDisplay({
   return (
     <div className="dna-id-field dna-id-field-display">
       <span className="dna-id-field-label">{label}</span>
-      <span className="dna-id-field-value">{field.value}</span>
+      <span className="dna-id-field-value">{field.value || "—"}</span>
+      <FieldStatus field={field} />
     </div>
   );
 }
@@ -137,8 +158,9 @@ function EditableBandField({
         aria-label={editable ? t("dnaCard.clickToEdit", { label }) : undefined}
         style={{ textAlign: "left" }}
       >
-        {field.value}
+        {field.value || "—"}
       </button>
+      <FieldStatus field={field} />
     </div>
   );
 }
@@ -218,8 +240,9 @@ function EditableSpecField({
         aria-label={editable ? t("dnaCard.clickToEdit", { label }) : undefined}
         style={{ textAlign: "left" }}
       >
-        {field.value}
+        {field.value || "—"}
       </button>
+      <FieldStatus field={field} />
     </div>
   );
 }
@@ -266,7 +289,11 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   const isPreview = cardMode === "preview";
 
   return (
-    <div ref={ref} className={`dna-id-card ${isPreview ? "is-preview-mode" : ""}`}>
+    <div
+      ref={ref}
+      className={`dna-id-card ${isPreview ? "is-preview-mode" : ""}`}
+      data-material-label={t("dnaCard.materialLabel")}
+    >
       {images.length > 0 && (
         <div
           className="dna-id-swatch-gallery"
@@ -307,15 +334,7 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
           alt={t("dnaCard.logoAlt")}
           width={235}
           height={75}
-          style={{
-            display: "block",
-            width: "auto",
-            height: "clamp(18px, 5vw, 24px)",
-            maxWidth: "150px",
-            flexShrink: 1,
-            objectFit: "contain",
-            objectPosition: "right center"
-          }}
+          className="dna-id-logo"
         />
       </div>
 

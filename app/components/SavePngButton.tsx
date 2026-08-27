@@ -168,37 +168,17 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
   useImperativeHandle(ref, () => ({ save: handleSave }), [handleSave]);
 
   return (
-    <div style={{ marginTop: "0.75rem" }}>
+    <div className="workbench-action workbench-action-secondary">
       <button
+        type="button"
         onClick={handleSave}
         disabled={saving}
-        style={{
-          width: "100%",
-          padding: "0.75rem",
-          border: "none",
-          borderRadius: "8px",
-          fontSize: "1rem",
-          fontWeight: 600,
-          cursor: saving ? "wait" : "pointer",
-          background: saving ? "#c8e6c9" : "#4a6741",
-          color: "#fff",
-          transition: "background 0.2s"
-        }}
+        className="workbench-action-button"
       >
         {saving ? t("savePng.saving") : t("savePng.save")}
       </button>
       {error && (
-        <div
-          style={{
-            marginTop: "0.5rem",
-            padding: "0.5rem 0.75rem",
-            borderRadius: "6px",
-            background: "#fff0f0",
-            border: "1px solid #ffcdd2",
-            color: "#c62828",
-            fontSize: "0.85rem"
-          }}
-        >
+        <div className="workbench-action-message is-error">
           {error}
         </div>
       )}
