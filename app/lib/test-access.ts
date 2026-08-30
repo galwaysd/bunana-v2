@@ -28,6 +28,10 @@ function getAccessSecret(): string {
   return process.env.BUNANA_TEST_ACCESS_SECRET?.trim() ?? "";
 }
 
+export function isTestAccessEnabled(): boolean {
+  return process.env.BUNANA_TEST_ACCESS_ENABLED?.trim() === "true";
+}
+
 function digest(value: string, secret: string): Buffer {
   return createHmac("sha256", secret).update(value).digest();
 }
@@ -136,6 +140,8 @@ export function hasValidTestAccessSession(request: NextRequest): boolean {
 }
 
 export function hasProtectedWriteAccess(request: NextRequest): boolean {
+  if (!isTestAccessEnabled()) return true;
+
   return (
     hasValidTestAccessSession(request) ||
     validateConfiguredApiSecret(request)
