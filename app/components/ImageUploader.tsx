@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { readImagePayload } from "@/app/lib/image";
 import { useI18n } from "@/app/i18n";
 import type { ImagePayload } from "@/app/types";
@@ -20,11 +20,16 @@ export default function ImageUploader({
 }: Props) {
   const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
+  const readingRef = useRef(false);
+  const [reading, setReading] = useState(false);
+  const [error, setError] = useState("");
+  const locked = disabled || reading;
 
   const maxImages = 3;
   const remaining = maxImages - images.length;
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled || readingRef.current) return;
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
 
@@ -32,19 +37,25 @@ export default function ImageUploader({
     const toAdd = files.slice(0, remaining);
     if (toAdd.length === 0) return;
 
+    readingRef.current = true;
+    setReading(true);
+    setError("");
     try {
       const payloads = await Promise.all(toAdd.map(readImagePayload));
       // 前端去重：相同 imageHash 跳过
       const existing = new Set(images.map((img) => img.imageHash));
-      const unique = payloads.filter((p) => !existing.has(p.imageHash));
+      const unique = payloads.filter((p) => {
+        if (existing.has(p.imageHash)) return false;
+        existing.add(p.imageHash);
+        return true;
+      });
       onImagesChange([...images, ...unique]);
     } catch {
-      // 图片读取失败静默处理
-    }
-
-    // 清空 input 以支持重复选择同一个文件
-    if (inputRef.current) {
-      inputRef.current.value = "";
+      setError(t("imageUploader.readError"));
+    } finally {
+      readingRef.current = false;
+      setReading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   };
 
@@ -57,7 +68,7 @@ export default function ImageUploader({
   };
 
   return (
-    <div className={`image-uploader${images.length > 0 ? " has-images" : ""}`}>
+    <div className={`image-uploader${images.length > 0 ? " has-images" : ""}`} aria-busy={reading}>
       {images.map((img, i) => (
         <div
           key={`${img.imageHash}-${i}`}
@@ -72,7 +83,7 @@ export default function ImageUploader({
           <button
             type="button"
             onClick={() => handleRemove(i)}
-            disabled={disabled}
+            disabled={locked}
             className="image-uploader-remove"
             title={t("imageUploader.remove")}
           >
@@ -83,7 +94,7 @@ export default function ImageUploader({
 
       {remaining > 0 && (
         <label
-          className={`image-uploader-add${disabled ? " is-disabled" : ""}`}
+          className={`image-uploader-add${locked ? " is-disabled" : ""}`}
           title={t("imageUploader.uploadHint")}
         >
           <span className="image-uploader-add-icon" aria-hidden="true">+</span>
@@ -94,7 +105,7 @@ export default function ImageUploader({
             accept="image/*"
             multiple
             onChange={handleChange}
-            disabled={disabled}
+            disabled={locked}
             style={{ display: "none" }}
           />
         </label>
@@ -105,6 +116,7 @@ export default function ImageUploader({
           {t("imageUploader.uploadPrompt")}
         </span>
       )}
+      {error && <span role="alert" style={{ flexBasis: "100%", overflowWrap: "anywhere" }}>{error}</span>}
     </div>
   );
 }

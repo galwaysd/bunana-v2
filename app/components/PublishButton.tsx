@@ -9,10 +9,10 @@ import { useI18n } from "@/app/i18n";
 import type { Locale } from "@/app/i18n/translations";
 
 const AUTO_SAVE_FAILED_MESSAGE: Record<Locale, string> = {
-  zh: "发布已成功，卡片未自动保存。请点击“保存布料档案”手动保存。",
-  en: "Published successfully, but the card was not saved automatically. Please use Save Fabric DNA to try again.",
-  ja: "公開は完了しましたが、カードを自動保存できませんでした。「Fabric DNA を保存」から再試行してください。",
-  ko: "게시는 완료되었지만 카드가 자동 저장되지 않았습니다. Fabric DNA 저장 버튼으로 다시 시도해 주세요."
+  zh: "已发布，摘要未能下载，请重试下载。",
+  en: "Published, but the summary could not be downloaded. Please retry the download.",
+  ja: "公開は完了しましたが、要約をダウンロードできませんでした。もう一度お試しください。",
+  ko: "게시는 완료되었지만 요약을 다운로드하지 못했습니다. 다시 다운로드해 주세요."
 };
 
 const PUBLISHED_LABEL: Record<Locale, string> = {
@@ -29,6 +29,10 @@ type Props = {
   aiProvider: string;
   postType: PostType | null;
   onPublishSuccess?: () => Promise<boolean>;
+  /** 输入已变化时禁止发布旧结果 */
+  disabled?: boolean;
+  /** 将发布事务锁同步给同页输入、编辑与下载控件 */
+  onPublishingChange?: (publishing: boolean) => void;
 };
 
 export default function PublishButton({
@@ -37,7 +41,9 @@ export default function PublishButton({
   images,
   aiProvider,
   postType,
-  onPublishSuccess
+  onPublishSuccess,
+  disabled = false,
+  onPublishingChange
 }: Props) {
   const { locale, t } = useI18n();
   const [publishing, setPublishing] = useState(false);
@@ -47,13 +53,14 @@ export default function PublishButton({
   const router = useRouter();
 
   const handlePublish = useCallback(async () => {
-    if (publishing || published) return;
+    if (publishing || published || disabled) return;
     if (!postType) {
       setError(t("home.postType.required"));
       return;
     }
 
     setPublishing(true);
+    onPublishingChange?.(true);
     setError("");
     setNotice("");
 
@@ -91,17 +98,18 @@ export default function PublishButton({
       setError(t("publish.networkError"));
     } finally {
       setPublishing(false);
+      onPublishingChange?.(false);
     }
-  }, [publishing, published, dna, text, images, aiProvider, postType, onPublishSuccess, locale, router, t]);
+  }, [publishing, published, disabled, dna, text, images, aiProvider, postType, onPublishSuccess, onPublishingChange, locale, router, t]);
 
-  const disabled = publishing || published || !postType;
+  const actionDisabled = disabled || publishing || published || !postType;
 
   return (
     <div className="workbench-action workbench-action-primary">
       <button
         type="button"
         onClick={handlePublish}
-        disabled={disabled}
+        disabled={actionDisabled}
         className="workbench-action-button"
       >
         {publishing

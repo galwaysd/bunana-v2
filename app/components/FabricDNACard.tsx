@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { FabricDNA, FabricField, ImagePayload } from "@/app/types";
 import { useI18n } from "@/app/i18n";
-import { DNA_FIELD_KEYS } from "@/app/lib/dna";
+import { createEmptyField, DNA_FIELD_KEYS } from "@/app/lib/dna";
 
 export type CardMode = "edit" | "preview";
 
@@ -12,6 +12,7 @@ type Props = {
   dna: FabricDNA;
   aiProvider: string;
   images?: ImagePayload[];
+  sourceText?: string;
   onDnaChange?: (dna: FabricDNA) => void;
   cardMode?: CardMode;
 };
@@ -23,16 +24,24 @@ const SPEC_FIELDS: (keyof FabricDNA)[] = [
   "color", "features"
 ];
 
+function getTrustState(field: FabricField): "ai" | "text" | "user" | "missing" {
+  if (!field.value.trim() || field.status === "missing") return "missing";
+  if (field.source === "user_input") return "user";
+  if (field.source === "text_extraction") return "text";
+  return "ai";
+}
+
 function FieldStatus({ field }: { field: FabricField }) {
   const { t } = useI18n();
-  const isUserInput = field.source === "user_input";
-  const label = isUserInput ? t("status.userInput") : t(`status.${field.status}`);
+  const trustState = getTrustState(field);
+  const label = t(`status.${trustState}`);
 
   return (
     <span
       className="dna-field-status"
       data-status={field.status}
       data-source={field.source}
+      data-trust={trustState}
       title={label}
     >
       <span aria-hidden="true" />
@@ -102,21 +111,26 @@ function EditableBandField({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const editFinishedRef = useRef(false);
 
   const startEdit = useCallback(() => {
     if (!editable || !onChange) return;
+    editFinishedRef.current = false;
     setDraft(field.value);
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   }, [editable, field.value, onChange]);
 
   const commit = useCallback(() => {
+    if (editFinishedRef.current) return;
+    editFinishedRef.current = true;
     const trimmed = draft.trim();
-    if (onChange && trimmed) onChange(fieldKey, trimmed);
+    if (onChange && trimmed !== field.value.trim()) onChange(fieldKey, trimmed);
     setIsEditing(false);
-  }, [draft, fieldKey, onChange]);
+  }, [draft, field.value, fieldKey, onChange]);
 
   const cancel = useCallback(() => {
+    editFinishedRef.current = true;
     setDraft(field.value);
     setIsEditing(false);
   }, [field.value]);
@@ -184,21 +198,26 @@ function EditableSpecField({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(field.value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const editFinishedRef = useRef(false);
 
   const startEdit = useCallback(() => {
     if (!editable || !onChange) return;
+    editFinishedRef.current = false;
     setDraft(field.value);
     setIsEditing(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   }, [editable, field.value, onChange]);
 
   const commit = useCallback(() => {
+    if (editFinishedRef.current) return;
+    editFinishedRef.current = true;
     const trimmed = draft.trim();
-    if (onChange) onChange(fieldKey, trimmed || field.value);
+    if (onChange && trimmed !== field.value.trim()) onChange(fieldKey, trimmed);
     setIsEditing(false);
   }, [draft, fieldKey, field.value, onChange]);
 
   const cancel = useCallback(() => {
+    editFinishedRef.current = true;
     setDraft(field.value);
     setIsEditing(false);
   }, [field.value]);
@@ -272,14 +291,17 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   const handleFieldChange = useCallback(
     (key: keyof FabricDNA, value: string) => {
       if (!onDnaChange) return;
+      const normalizedValue = value.trim();
       onDnaChange({
         ...dna,
-        [key]: {
-          value,
-          status: "confirmed",
-          confidence: 1,
-          source: "user_input"
-        }
+        [key]: normalizedValue
+          ? {
+              value: normalizedValue,
+              status: "confirmed",
+              confidence: 1,
+              source: "user_input"
+            }
+          : createEmptyField()
       });
     },
     [dna, onDnaChange]
@@ -291,8 +313,9 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
   return (
     <div
       ref={ref}
-      className={`dna-id-card ${isPreview ? "is-preview-mode" : ""}`}
+      className={`dna-id-card ${isPreview ? "is-preview-mode" : ""}${images.length > 0 ? " has-swatch" : ""}`}
       data-material-label={t("dnaCard.materialLabel")}
+      data-export-kind="procurement-summary"
     >
       {images.length > 0 && (
         <div
@@ -373,7 +396,7 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
         )}
       </div>
 
-      {/* ── Spec Fields Grid（10 个规格字段）── */}
+      {/* ── Spec Fields Grid（12 个规格字段）── */}
       <div className="dna-id-fields">
         {specs.map(([key, field]) => (
           isPreview ? (

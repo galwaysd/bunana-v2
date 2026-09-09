@@ -13,7 +13,6 @@ import { useAnalyze } from "./hooks/useAnalyze";
 import { useI18n } from "./i18n";
 import type { PostType } from "./lib/supabase/requirements";
 import type { ImagePayload, FabricDNA } from "./types";
-// DNA 存在即可发布 — AI 已填满所有字段
 
 type FlowPhase = "idle" | "analyzing" | "done";
 
@@ -24,12 +23,31 @@ function channelState(phase: FlowPhase): string {
   return base;
 }
 
+type AnalysisInputSnapshot = {
+  text: string;
+  images: ImagePayload[];
+};
+
+function isSameAnalysisInput(
+  snapshot: AnalysisInputSnapshot | null,
+  text: string,
+  images: ImagePayload[]
+): boolean {
+  if (!snapshot || snapshot.text !== text.trim() || snapshot.images.length !== images.length) {
+    return false;
+  }
+
+  return snapshot.images.every(
+    (image, index) => image.imageHash === images[index]?.imageHash
+  );
+}
+
 export default function Home() {
   const { t, tArray } = useI18n();
   const [images, setImages] = useState<ImagePayload[]>([]);
   const [text, setText] = useState("");
   const [postType, setPostType] = useState<PostType | null>(null);
-  const [cardMode, setCardMode] = useState<CardMode>("edit");
+  const [cardMode, setCardMode] = useState<CardMode>("preview");
 
   /* 从广场详情页「我需要这个面料」跳转来的预填文本 */
   useEffect(() => {
@@ -48,6 +66,9 @@ export default function Home() {
   // ----- DNA state -----
   const [dna, setDna] = useState<FabricDNA | null>(null);
   const [phase, setPhase] = useState<FlowPhase>("idle");
+  const [resultInput, setResultInput] = useState<AnalysisInputSnapshot | null>(null);
+  const [resultVersion, setResultVersion] = useState(0);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // ----- Card ref (for PNG export) -----
   const cardRef = useRef<HTMLDivElement>(null);
@@ -67,13 +88,22 @@ export default function Home() {
 
   // ----- Initial analyze -----
   const handleInitialAnalyze = useCallback(async () => {
+    const inputSnapshot: AnalysisInputSnapshot = {
+      text: text.trim(),
+      images: [...images]
+    };
+
     setPhase("analyzing");
     setDna(null);
+    setResultInput(null);
 
     const result = await analyze(text, images);
 
     if (result) {
       setDna(result.dna);
+      setResultInput(inputSnapshot);
+      setCardMode("preview");
+      setResultVersion((version) => version + 1);
       setPhase("done");
     } else {
       setPhase("idle");
@@ -90,9 +120,23 @@ export default function Home() {
   );
 
   const canAnalyze =
-    (text.trim().length > 0 || images.length > 0) && !initialLoading;
+    (text.trim().length > 0 || images.length > 0) && !initialLoading && !isPublishing;
 
-  const isSubmitDisabled = phase === "analyzing";
+  const resultIsStale = Boolean(
+    dna && !isSameAnalysisInput(resultInput, text, images)
+  );
+  const isInputLocked = phase === "analyzing" || isPublishing;
+  const resultImages = resultInput?.images ?? [];
+  const resultText = resultInput?.text ?? "";
+  const inputStatusKey = phase === "analyzing"
+    ? "analyzing"
+    : initialError
+      ? "failed"
+      : resultIsStale
+        ? "modified"
+        : dna
+          ? "generated"
+          : "waiting";
 
   return (
     <div className="workbench-page" data-phase={phase}>
@@ -113,53 +157,50 @@ export default function Home() {
             </div>
           </header>
 
-          {/* ======== Real analysis entry — handlers and state stay unchanged ======== */}
           <aside className="input-panel" data-analysis-label={t("home.analysisInput")}>
-          <div className="input-panel-heading">
-            <div className="panel-label">{t("home.panelLabel")}</div>
-            <span className="panel-step">{t("home.inputMode")}</span>
-          </div>
+            <div className="input-panel-heading">
+              <div className="panel-label">{t("home.panelLabel")}</div>
+              <span className="panel-step">{t("home.inputMode")}</span>
+            </div>
 
-          <ImageUploader
-            images={images}
-            onImagesChange={setImages}
-            disabled={isSubmitDisabled}
-          />
+            <ImageUploader
+              images={images}
+              onImagesChange={setImages}
+              disabled={isInputLocked}
+            />
 
-          <TextInput
-            text={text}
-            onTextChange={setText}
-            disabled={isSubmitDisabled}
-          />
+            <TextInput
+              text={text}
+              onTextChange={setText}
+              disabled={isInputLocked}
+            />
 
-          {/* Analyze button */}
-          {phase !== "done" && (
             <button
               type="button"
               onClick={handleInitialAnalyze}
               disabled={!canAnalyze}
               className="btn-weave"
             >
-              {phase === "analyzing" ? t("home.weavingLoading") : t("home.weavingBtn")}
+              {phase === "analyzing"
+                ? t("home.weavingLoading")
+                : dna
+                  ? t("home.reanalyze")
+                  : t("home.weavingBtn")}
             </button>
-          )}
 
-          {/* Re-analyze button when done */}
-          {phase === "done" && (
-            <button
-              type="button"
-              onClick={handleInitialAnalyze}
-              disabled={!canAnalyze}
-              className="btn-weave"
-              style={{ opacity: 0.85 }}
-            >
-              {t("home.reanalyze")}
-            </button>
-          )}
+            {phase !== "idle" && (
+              <div
+                className="compact-input-status"
+                data-input-status={inputStatusKey}
+                role="status"
+              >
+                <span aria-hidden="true" />
+                {t(`home.inputStatus.${inputStatusKey}`)}
+              </div>
+            )}
           </aside>
         </article>
 
-        {/* ======== Center: Weaving Channel ======== */}
         <div className={channelState(phase)}>
           <span className="channel-edge-left" />
           <span className="channel-edge-right" />
@@ -172,50 +213,93 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ======== Right: Output Panel ======== */}
-        <section className="output-panel">
-
-          {/* Loading (initial analyze) */}
+        <section className="output-panel" aria-live="polite">
           {initialLoading && <WeavingLoader />}
 
-          {/* Error */}
-          {initialError && (
-            <div className="error-banner">{initialError}</div>
-          )}
+          {initialError && <div className="error-banner">{initialError}</div>}
 
-          {/* Fabric DNA Card */}
           {dna ? (
-            <>
+            <div
+              className={`home-result-stack${resultIsStale ? " is-stale" : ""}`}
+              data-result-state={resultIsStale ? "stale" : "current"}
+            >
               <FabricDNACard
                 ref={cardRef}
                 dna={dna}
                 aiProvider={aiProvider}
-                images={images}
-                onDnaChange={handleDnaChange}
+                images={resultImages}
+                sourceText={resultText}
+                onDnaChange={resultIsStale || isPublishing ? undefined : handleDnaChange}
                 cardMode={cardMode}
               />
-              {/* Toggle Button: Preview / Edit */}
-              <div className="card-mode-switch" role="group" aria-label={t("dnaCard.modeLabel")}>
+
+              {resultIsStale && (
+                <div className="result-version-warning" role="status">
+                  <strong>{t("home.staleResultTitle")}</strong>
+                  <span>{t("home.staleResultMessage")}</span>
+                </div>
+              )}
+
+              <div className="card-mode-action">
                 <button
                   type="button"
-                  onClick={() => setCardMode("edit")}
-                  className={cardMode === "edit" ? "is-active" : ""}
-                  aria-pressed={cardMode === "edit"}
+                  onClick={() => setCardMode(cardMode === "preview" ? "edit" : "preview")}
+                  disabled={resultIsStale || isPublishing}
                 >
-                  {t("dnaCard.editMode")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCardMode("preview")}
-                  className={cardMode === "preview" ? "is-active" : ""}
-                  aria-pressed={cardMode === "preview"}
-                >
-                  {t("dnaCard.previewMode")}
+                  {cardMode === "preview"
+                    ? t("dnaCard.viewDetails")
+                    : t("dnaCard.returnSummary")}
                 </button>
               </div>
-            </>
+
+              {/* PostType 选择器 — 强制二选一，发布按钮依赖 postType */}
+              <div className="post-type-selector">
+                <div className="post-type-label">{t("home.postType.label")}</div>
+                <div className="post-type-options">
+                  <button
+                    type="button"
+                    className={`post-type-option post-type-seeking ${postType === "seeking" ? "is-active" : ""}`}
+                    onClick={() => setPostType("seeking")}
+                    disabled={isPublishing}
+                    aria-pressed={postType === "seeking"}
+                  >
+                    <span className="post-type-title">{t("home.postType.seeking")}</span>
+                    <span className="post-type-desc">{t("home.postType.seekingDesc")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`post-type-option post-type-offering ${postType === "offering" ? "is-active" : ""}`}
+                    onClick={() => setPostType("offering")}
+                    disabled={isPublishing}
+                    aria-pressed={postType === "offering"}
+                  >
+                    <span className="post-type-title">{t("home.postType.offering")}</span>
+                    <span className="post-type-desc">{t("home.postType.offeringDesc")}</span>
+                  </button>
+                </div>
+              </div>
+
+              <SavePngButton
+                ref={savePngRef}
+                targetRef={cardRef} 
+                cardMode={cardMode}
+                onCardModeChange={setCardMode}
+                disabled={resultIsStale}
+                manualDisabled={isPublishing}
+              />
+              <PublishButton
+                key={resultVersion}
+                dna={dna}
+                text={resultText}
+                images={resultImages}
+                aiProvider={aiProvider}
+                postType={postType}
+                onPublishSuccess={handlePublishedSave}
+                disabled={resultIsStale}
+                onPublishingChange={setIsPublishing}
+              />
+            </div>
           ) : (
-            /* DNA 身份证占位（idle / analyzing 时显示） */
             <div className="dna-id-card is-placeholder">
               <div className="dna-id-header">
                 <div className="dna-id-titles">
@@ -238,9 +322,7 @@ export default function Home() {
               </div>
               <div className="dna-id-summary">
                 <span className="dna-id-status-text">
-                  {phase === "analyzing"
-                    ? t("home.aiReading")
-                    : ""}
+                  {phase === "analyzing" ? t("home.aiReading") : ""}
                 </span>
               </div>
               <div className="dna-id-fields">
@@ -253,52 +335,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          {/* Post Type Selector + Publish - 仅在 DNA 就绪时显示 */}
-          {phase === "done" && dna && (
-            <>
-              {/* PostType 选择器 — 强制二选一，发布按钮依赖 postType */}
-              <div className="post-type-selector">
-                <div className="post-type-label">{t("home.postType.label")}</div>
-                <div className="post-type-options">
-                  <button
-                    type="button"
-                    className={`post-type-option post-type-seeking ${postType === "seeking" ? "is-active" : ""}`}
-                    onClick={() => setPostType("seeking")}
-                    aria-pressed={postType === "seeking"}
-                  >
-                    <span className="post-type-title">{t("home.postType.seeking")}</span>
-                    <span className="post-type-desc">{t("home.postType.seekingDesc")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`post-type-option post-type-offering ${postType === "offering" ? "is-active" : ""}`}
-                    onClick={() => setPostType("offering")}
-                    aria-pressed={postType === "offering"}
-                  >
-                    <span className="post-type-title">{t("home.postType.offering")}</span>
-                    <span className="post-type-desc">{t("home.postType.offeringDesc")}</span>
-                  </button>
-                </div>
-              </div>
-
-              <SavePngButton
-                ref={savePngRef}
-                targetRef={cardRef} 
-                cardMode={cardMode}
-                onCardModeChange={setCardMode}
-              />
-              <PublishButton
-                dna={dna}
-                text={text}
-                images={images}
-                aiProvider={aiProvider}
-                postType={postType}
-                onPublishSuccess={handlePublishedSave}
-              />
-            </>
-          )}
-
         </section>
 
         {phase === "idle" && (
@@ -409,7 +445,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* ======== Bottom: Shuttle Track ======== */}
       <div className="shuttle-track">
         <span className="shuttle-track-label">{t("home.aiOrganizing")}</span>
         <div className="shuttle-track-line" />

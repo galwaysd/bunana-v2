@@ -19,6 +19,10 @@ type Props = {
   cardMode?: CardMode;
   /** 改变卡片模式的回调函数 */
   onCardModeChange?: (mode: CardMode) => void;
+  /** 输入已变化时禁止导出旧结果 */
+  disabled?: boolean;
+  /** 发布事务中只锁定手动入口，自动保存仍可继续 */
+  manualDisabled?: boolean;
 };
 
 export type SavePngHandle = {
@@ -83,7 +87,13 @@ async function waitForCardImages(target: HTMLDivElement): Promise<void> {
 }
 
 const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
-  { targetRef, cardMode = "edit", onCardModeChange },
+  {
+    targetRef,
+    cardMode = "edit",
+    onCardModeChange,
+    disabled = false,
+    manualDisabled = false
+  },
   ref
 ) {
   const { t } = useI18n();
@@ -92,6 +102,8 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
   const savePromiseRef = useRef<Promise<boolean> | null>(null);
 
   const performSave = useCallback(async (): Promise<boolean> => {
+    if (disabled) return false;
+
     if (!targetRef.current) {
       setError(t("savePng.cardNotReady"));
       return false;
@@ -128,7 +140,7 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
         .toISOString()
         .replace(/:/g, "-")
         .replace(/\..+$/, "");
-      const filename = `Bunana-Fabric-DNA-${timestamp}.png`;
+      const filename = `Bunana-Procurement-Summary-${timestamp}.png`;
 
       const link = document.createElement("a");
       link.download = filename;
@@ -148,7 +160,7 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
       }
       setSaving(false);
     }
-  }, [targetRef, t, cardMode, onCardModeChange]);
+  }, [disabled, targetRef, t, cardMode, onCardModeChange]);
 
   const handleSave = useCallback((): Promise<boolean> => {
     if (savePromiseRef.current) {
@@ -172,7 +184,7 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
       <button
         type="button"
         onClick={handleSave}
-        disabled={saving}
+        disabled={saving || disabled || manualDisabled}
         className="workbench-action-button"
       >
         {saving ? t("savePng.saving") : t("savePng.save")}
