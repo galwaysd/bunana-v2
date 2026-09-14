@@ -3054,15 +3054,20 @@ body {
 }
 
 .dna-id-card.is-preview-mode .dna-id-swatch-gallery {
-  position: absolute;
-  inset: 0;
-  height: auto;
-  border: 0;
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: clamp(210px, 27vw, 340px);
+  border-bottom: 1px solid rgba(48, 52, 43, 0.14);
 }
 
 .dna-id-card.is-preview-mode .dna-id-swatch img,
 .dna-id-card.is-preview-mode:hover .dna-id-swatch img {
   transform: none;
+}
+
+.dna-id-card.is-preview-mode:not(.has-swatch)::after {
+  display: none;
 }
 
 .dna-id-card.is-preview-mode .dna-id-header,
@@ -3072,8 +3077,8 @@ body {
 .dna-id-card.is-preview-mode .dna-id-missing-summary {
   position: relative;
   z-index: 3;
-  width: 65%;
-  margin-left: auto;
+  width: 100%;
+  margin-left: 0;
   background: rgba(247, 245, 237, 0.94);
 }
 
@@ -3109,8 +3114,8 @@ body {
 }
 
 .dna-id-card.is-preview-mode .dna-id-natural-summary p {
-  font-size: 18px;
-  line-height: 29px;
+  font-size: 16px;
+  line-height: 26px;
 }
 
 .dna-id-card.is-preview-mode .dna-id-section-label {
@@ -3148,7 +3153,8 @@ body {
 .dna-id-card.is-preview-mode .dna-id-fields {
   min-height: 0;
   padding: 4px 24px 12px;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
   align-content: start;
 }
 

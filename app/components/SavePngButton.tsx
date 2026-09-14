@@ -23,6 +23,8 @@ type Props = {
   disabled?: boolean;
   /** 发布事务中只锁定手动入口，自动保存仍可继续 */
   manualDisabled?: boolean;
+  /** 将导出生命周期暴露给页面，用于锁定会改变当前结果的交互 */
+  onSavingChange?: (saving: boolean) => void;
 };
 
 export type SavePngHandle = {
@@ -92,7 +94,8 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
     cardMode = "edit",
     onCardModeChange,
     disabled = false,
-    manualDisabled = false
+    manualDisabled = false,
+    onSavingChange
   },
   ref
 ) {
@@ -110,6 +113,7 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
     }
 
     setSaving(true);
+    onSavingChange?.(true);
     setError("");
 
     // 如果当前是编辑模式，导出前临时切换到预览模式
@@ -159,8 +163,9 @@ const SavePngButton = forwardRef<SavePngHandle, Props>(function SavePngButton(
         onCardModeChange(originalMode);
       }
       setSaving(false);
+      onSavingChange?.(false);
     }
-  }, [disabled, targetRef, t, cardMode, onCardModeChange]);
+  }, [disabled, targetRef, t, cardMode, onCardModeChange, onSavingChange]);
 
   const handleSave = useCallback((): Promise<boolean> => {
     if (savePromiseRef.current) {

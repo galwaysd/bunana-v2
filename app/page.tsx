@@ -69,6 +69,7 @@ export default function Home() {
   const [resultInput, setResultInput] = useState<AnalysisInputSnapshot | null>(null);
   const [resultVersion, setResultVersion] = useState(0);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // ----- Card ref (for PNG export) -----
   const cardRef = useRef<HTMLDivElement>(null);
@@ -120,12 +121,15 @@ export default function Home() {
   );
 
   const canAnalyze =
-    (text.trim().length > 0 || images.length > 0) && !initialLoading && !isPublishing;
+    (text.trim().length > 0 || images.length > 0) &&
+    !initialLoading &&
+    !isPublishing &&
+    !isExporting;
 
   const resultIsStale = Boolean(
     dna && !isSameAnalysisInput(resultInput, text, images)
   );
-  const isInputLocked = phase === "analyzing" || isPublishing;
+  const isInputLocked = phase === "analyzing" || isPublishing || isExporting;
   const resultImages = resultInput?.images ?? [];
   const resultText = resultInput?.text ?? "";
   const inputStatusKey = phase === "analyzing"
@@ -228,8 +232,7 @@ export default function Home() {
                 dna={dna}
                 aiProvider={aiProvider}
                 images={resultImages}
-                sourceText={resultText}
-                onDnaChange={resultIsStale || isPublishing ? undefined : handleDnaChange}
+                onDnaChange={resultIsStale || isPublishing || isExporting ? undefined : handleDnaChange}
                 cardMode={cardMode}
               />
 
@@ -244,7 +247,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setCardMode(cardMode === "preview" ? "edit" : "preview")}
-                  disabled={resultIsStale || isPublishing}
+                  disabled={resultIsStale || isPublishing || isExporting}
                 >
                   {cardMode === "preview"
                     ? t("dnaCard.viewDetails")
@@ -260,7 +263,7 @@ export default function Home() {
                     type="button"
                     className={`post-type-option post-type-seeking ${postType === "seeking" ? "is-active" : ""}`}
                     onClick={() => setPostType("seeking")}
-                    disabled={isPublishing}
+                    disabled={isPublishing || isExporting}
                     aria-pressed={postType === "seeking"}
                   >
                     <span className="post-type-title">{t("home.postType.seeking")}</span>
@@ -270,7 +273,7 @@ export default function Home() {
                     type="button"
                     className={`post-type-option post-type-offering ${postType === "offering" ? "is-active" : ""}`}
                     onClick={() => setPostType("offering")}
-                    disabled={isPublishing}
+                    disabled={isPublishing || isExporting}
                     aria-pressed={postType === "offering"}
                   >
                     <span className="post-type-title">{t("home.postType.offering")}</span>
@@ -286,6 +289,7 @@ export default function Home() {
                 onCardModeChange={setCardMode}
                 disabled={resultIsStale}
                 manualDisabled={isPublishing}
+                onSavingChange={setIsExporting}
               />
               <PublishButton
                 key={resultVersion}
@@ -295,7 +299,7 @@ export default function Home() {
                 aiProvider={aiProvider}
                 postType={postType}
                 onPublishSuccess={handlePublishedSave}
-                disabled={resultIsStale}
+                disabled={resultIsStale || isExporting}
                 onPublishingChange={setIsPublishing}
               />
             </div>

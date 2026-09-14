@@ -12,7 +12,6 @@ type Props = {
   dna: FabricDNA;
   aiProvider: string;
   images?: ImagePayload[];
-  sourceText?: string;
   onDnaChange?: (dna: FabricDNA) => void;
   cardMode?: CardMode;
 };
@@ -23,6 +22,19 @@ const SPEC_FIELDS: (keyof FabricDNA)[] = [
   "waterproof", "moq", "quantity", "destinationMarket", "leadTime",
   "color", "features"
 ];
+
+/** Preview 的沟通优先级；它只决定展示顺序，不构成新的数据结构。 */
+const IDENTITY_FIELDS: (keyof FabricDNA)[] = ["fabricName", "use"];
+const MATERIAL_FIELDS: (keyof FabricDNA)[] = [
+  "composition", "features", "color", "weave", "waterproof", "coating", "weightGsm", "width"
+];
+const BUSINESS_FIELDS: (keyof FabricDNA)[] = [
+  "quantity", "moq", "leadTime", "destinationMarket"
+];
+const PREVIEW_FIELDS = [...IDENTITY_FIELDS, ...MATERIAL_FIELDS, ...BUSINESS_FIELDS];
+
+const PREVIEW_FACT_LIMIT = 6;
+const PREVIEW_MISSING_LIMIT = 4;
 
 function getTrustState(field: FabricField): "ai" | "text" | "user" | "missing" {
   if (!field.value.trim() || field.status === "missing") return "missing";
@@ -47,28 +59,6 @@ function FieldStatus({ field }: { field: FabricField }) {
       <span aria-hidden="true" />
       {label}
     </span>
-  );
-}
-
-// ===== BandFieldDisplay — 面料名称 / 用途（identity band）展示模式 =====
-
-function BandFieldDisplay({
-  label,
-  field,
-  size = "md"
-}: {
-  label: string;
-  field: FabricField;
-  size?: "md" | "sm";
-}) {
-  return (
-    <div className="dna-id-band-row dna-id-band-display">
-      <span className="dna-id-band-label">{label}</span>
-      <span className={`dna-id-band-value ${size === "sm" ? "sm" : ""}`}>
-        {field.value || "—"}
-      </span>
-      <FieldStatus field={field} />
-    </div>
   );
 }
 
@@ -288,6 +278,65 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
     [dna]
   );
 
+  const previewFacts = useMemo(() => {
+    const available = (keys: (keyof FabricDNA)[]) =>
+      keys.filter((key) => getTrustState(dna[key]) !== "missing");
+    const selected = [
+      ...available(IDENTITY_FIELDS).slice(0, 2),
+      ...available(MATERIAL_FIELDS).slice(0, 2),
+      ...available(BUSINESS_FIELDS).slice(0, 2)
+    ];
+    const remaining = PREVIEW_FIELDS.filter(
+      (key) => getTrustState(dna[key]) !== "missing" && !selected.includes(key)
+    );
+
+    return [...selected, ...remaining]
+      .slice(0, PREVIEW_FACT_LIMIT)
+      .map((key) => [key, dna[key]] as const);
+  }, [dna]);
+
+  const previewMissing = useMemo(
+    () => PREVIEW_FIELDS
+      .filter((key) => getTrustState(dna[key]) === "missing")
+      .slice(0, PREVIEW_MISSING_LIMIT),
+    [dna]
+  );
+
+  const previewSummary = useMemo(() => {
+    const sentences: string[] = [];
+    if (getTrustState(dna.fabricName) !== "missing") {
+      sentences.push(t("dnaCard.summaryFabric", { value: dna.fabricName.value }));
+    }
+    if (getTrustState(dna.use) !== "missing") {
+      sentences.push(t("dnaCard.summaryUse", { value: dna.use.value }));
+    }
+
+    const supportingFacts = previewFacts
+      .filter(([key]) => key !== "fabricName" && key !== "use")
+      .slice(0, 3);
+    const trustGroups = (["text", "user", "ai"] as const).map((trust) => ({
+      trust,
+      details: supportingFacts
+        .filter(([, field]) => getTrustState(field) === trust)
+        .map(([key, field]) =>
+          t("dnaCard.summaryField", { label: dnaLabels[key], value: field.value })
+        )
+    }));
+    for (const group of trustGroups) {
+      if (group.details.length === 0) continue;
+      const key = group.trust === "text"
+        ? "dnaCard.summaryTextKnown"
+        : group.trust === "user"
+          ? "dnaCard.summaryUserKnown"
+          : "dnaCard.summaryAiKnown";
+      sentences.push(t(key, { details: group.details.join(t("dnaCard.summaryJoin")) }));
+    }
+
+    return sentences.length > 0
+      ? sentences.join(t("dnaCard.summarySentenceJoin"))
+      : t("dnaCard.summaryInsufficient");
+  }, [dna, dnaLabels, previewFacts, t]);
+
   const handleFieldChange = useCallback(
     (key: keyof FabricDNA, value: string) => {
       if (!onDnaChange) return;
@@ -349,8 +398,12 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
       {/* ── Header ── */}
       <div className="dna-id-header">
         <div className="dna-id-titles">
-          <span className="dna-id-title">{t("dnaCard.title")}</span>
-          <span className="dna-id-subtitle">{t("dnaCard.subtitle")}</span>
+          <span className="dna-id-title">
+            {isPreview ? t("dnaCard.summaryTitle") : t("dnaCard.title")}
+          </span>
+          <span className="dna-id-subtitle">
+            {isPreview ? t("dnaCard.summarySubtitle") : t("dnaCard.subtitle")}
+          </span>
         </div>
         <Image
           src="/brand/bunana_logo_lockup.png"
@@ -361,22 +414,38 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
         />
       </div>
 
-      {/* ── Identity Band（面料名称 + 用途）── */}
-      <div className="dna-id-band">
-        {isPreview ? (
-          <>
-            <BandFieldDisplay
-              label={dnaLabels.fabricName}
-              field={dna.fabricName}
-            />
-            <BandFieldDisplay
-              label={dnaLabels.use}
-              field={dna.use}
-              size="sm"
-            />
-          </>
-        ) : (
-          <>
+      {isPreview ? (
+        <>
+          <section className="dna-id-context dna-id-natural-summary">
+            <div className="dna-id-context-block">
+              <span className="dna-id-context-label">{t("dnaCard.naturalSummaryLabel")}</span>
+              <p>{previewSummary}</p>
+            </div>
+          </section>
+
+          <div className="dna-id-section-label">{t("dnaCard.knownFieldsLabel")}</div>
+          <div className="dna-id-fields dna-id-preview-facts">
+            {previewFacts.map(([key, field]) => (
+              <SpecFieldDisplay key={key} label={dnaLabels[key]} field={field} />
+            ))}
+          </div>
+
+          {previewFacts.length === 0 ? (
+            <p className="dna-id-missing-summary is-all-missing">
+              {t("dnaCard.summaryEmpty")}
+            </p>
+          ) : previewMissing.length > 0 ? (
+            <p className="dna-id-missing-summary">
+              {t("dnaCard.summaryMissing", {
+                fields: previewMissing.map((key) => dnaLabels[key]).join(t("dnaCard.summaryJoin"))
+              })}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {/* ── Identity Band（面料名称 + 用途）── */}
+          <div className="dna-id-band">
             <EditableBandField
               label={dnaLabels.fabricName}
               field={dna.fabricName}
@@ -392,20 +461,11 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
               editable={editable}
               onChange={handleFieldChange}
             />
-          </>
-        )}
-      </div>
+          </div>
 
-      {/* ── Spec Fields Grid（12 个规格字段）── */}
-      <div className="dna-id-fields">
-        {specs.map(([key, field]) => (
-          isPreview ? (
-            <SpecFieldDisplay
-              key={key}
-              label={dnaLabels[key]}
-              field={field}
-            />
-          ) : (
+          {/* ── Spec Fields Grid（12 个规格字段）── */}
+          <div className="dna-id-fields">
+            {specs.map(([key, field]) => (
             <EditableSpecField
               key={key}
               label={dnaLabels[key]}
@@ -414,9 +474,10 @@ const FabricDNACard = forwardRef<HTMLDivElement, Props>(function FabricDNACard(
               editable={editable}
               onChange={handleFieldChange}
             />
-          )
-        ))}
-      </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 });
