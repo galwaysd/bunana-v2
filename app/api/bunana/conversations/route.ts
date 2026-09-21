@@ -7,7 +7,7 @@ import {
   insertMessage,
   type ConversationAccess,
 } from "@/app/lib/supabase/conversations";
-import { getRequirementById } from "@/app/lib/supabase/requirements";
+import { getRequirementById } from "@/app/lib/cloudbase/requirements";
 import {
   createParticipantToken,
   hashParticipantToken,

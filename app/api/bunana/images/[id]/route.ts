@@ -1,9 +1,9 @@
 /**
  * GET /api/bunana/images/[id] — 图片重定向代理
- * 将 image_assets 表 ID 映射为 Supabase Storage 公开 URL（302 重定向）
+ * 将 image_assets 表 ID 映射为 CloudBase Storage 公开 URL（302 重定向）
  */
 import { NextRequest, NextResponse } from "next/server";
-import { findImageAssetById } from "@/app/lib/supabase/images";
+import { findImageAssetById } from "@/app/lib/cloudbase/images";
 
 export async function GET(
   _request: NextRequest,

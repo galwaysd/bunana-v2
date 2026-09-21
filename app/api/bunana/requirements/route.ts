@@ -6,9 +6,9 @@
  * 浏览器写操作使用测试访问 Cookie；服务端可使用兼容认证头。
  */
 import { NextRequest, NextResponse } from "next/server";
-import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/supabase/requirements";
-import type { PostType } from "@/app/lib/supabase/requirements";
-import { persistImageFromDataUrl } from "@/app/lib/supabase/images";
+import { insertRequirement, listRequirements, getRequirementById } from "@/app/lib/cloudbase/requirements";
+import type { PostType } from "@/app/lib/cloudbase/requirements";
+import { persistImageFromDataUrl } from "@/app/lib/cloudbase/images";
 import type { ImagePayload, FabricDNA, FabricField } from "@/app/types";
 import { buildSpecsFromDNA, DNA_FIELD_KEYS, enforceExplicitInputOnlyFields } from "@/app/lib/dna";
 import { secureCorsHeaders } from "@/app/lib/auth";
@@ -211,10 +211,10 @@ function formatPublishError(
     const message = error.message;
     if (/ENOTFOUND|fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT/i.test(message)) {
       return isRead
-        ? "无法连接 Supabase 服务，请检查网络连接或服务配置。"
-        : "无法连接 Supabase 服务，请检查网络连接或服务配置。";
+        ? "无法连接 CloudBase 服务，请检查网络连接或服务配置。"
+        : "无法连接 CloudBase 服务，请检查网络连接或服务配置。";
     }
-    if (/缺少 Supabase 环境变量/i.test(message)) {
+    if (/缺少 CloudBase 环境变量/i.test(message)) {
       return message;
     }
     return message;
