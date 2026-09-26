@@ -15,7 +15,12 @@ function publicBase(req) {
 }
 
 function rewriteText(text, base) {
-  return text.split(TARGET).join(base);
+  return text
+    .split(TARGET).join(base)
+    .split("https://localhost:48765").join(base)
+    .split("http://localhost:48765").join(base)
+    .split("https://127.0.0.1:48765").join(base)
+    .split("http://127.0.0.1:48765").join(base);
 }
 
 async function handle(req, res) {
