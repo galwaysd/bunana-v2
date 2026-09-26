@@ -18,7 +18,7 @@ function rewriteText(text, base) {
   return text.split(TARGET).join(base);
 }
 
-const server = http.createServer(async (req, res) => {
+async function handle(req, res) {
   try {
     if (req.url === "/proxy-health") {
       res.writeHead(200, { "content-type": "application/json" });
@@ -99,10 +99,45 @@ const server = http.createServer(async (req, res) => {
     res.end(payload);
   } catch (err) {
     res.writeHead(502, { "content-type": "application/json" });
-    res.end(JSON.stringify({ error: "proxy_error", message: err instanceof Error ? err.message : String(err) }));
+    res.end(JSON.stringify({
+      error: "proxy_error",
+      message: err instanceof Error ? err.message : String(err)
+    }));
   }
-});
+}
+
+const server = http.createServer(handle);
+
+async function selfTest() {
+  const base = `http://127.0.0.1:${port}`;
+  const headers = {
+    "accept": "application/json, text/event-stream",
+    "x-forwarded-proto": "https",
+    "x-forwarded-host": "bunana-v2.onrender.com"
+  };
+  const paths = [
+    "/health",
+    "/.well-known/oauth-protected-resource",
+    "/.well-known/oauth-protected-resource/mcp",
+    "/.well-known/oauth-authorization-server",
+    "/.well-known/oauth-authorization-server/mcp",
+    "/mcp"
+  ];
+  for (const path of paths) {
+    try {
+      const r = await fetch(base + path, { headers, redirect: "manual" });
+      const body = await r.text();
+      const www = r.headers.get("www-authenticate") || "";
+      console.log(`SELFTEST ${path} -> ${r.status} content-type=${r.headers.get("content-type") || ""}`);
+      if (www) console.log(`SELFTEST ${path} WWW-Authenticate: ${www}`);
+      console.log(`SELFTEST ${path} BODY: ${body.slice(0, 1000)}`);
+    } catch (err) {
+      console.error(`SELFTEST ${path} FAILED: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`bunana-c2c-stable-proxy listening on :${port} -> ${TARGET}`);
+  setTimeout(() => void selfTest(), 1000);
 });
